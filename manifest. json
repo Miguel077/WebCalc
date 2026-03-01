@@ -1,0 +1,15 @@
+{
+  "name": "WebCalc",
+  "short_name": "WebCalc",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/fluency/192/000000/calculator.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
