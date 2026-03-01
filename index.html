@@ -7,27 +7,54 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="manifest" href="manifest.json">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>WebCalc</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>WebCalc Pro</title>
     <style>
         :root {
             --bg-color: #121212; --text-color: #e0e0e0; --btn-bg: #333;
             --accent-blue: #2c5d87; --accent-green: #27ae60; --accent-red: #c0392b;
+            --accent-gray: #455a64;
         }
+        * { box-sizing: border-box; }
         body {
             background-color: var(--bg-color); color: var(--text-color);
-            font-family: 'Courier New', monospace; display: flex;
-            flex-direction: column; align-items: center; padding: 10px; margin: 0; overflow: hidden;
+            font-family: 'Courier New', monospace; 
+            margin: 0; padding: 10px;
+            height: 100vh; width: 100vw;
+            display: flex; flex-direction: column;
+            overflow: hidden;
         }
+
+        #top-section {
+            display: flex; flex-direction: column;
+            flex: 1; min-height: 100px;
+            width: 100%; gap: 5px;
+        }
+
         #display {
-            width: 95%; height: 180px; background: #000; color: #00ff00;
+            width: 100%; flex: 1;
+            background: #000; color: #00ff00;
             border: 1px solid #444; border-radius: 8px; padding: 10px;
-            font-size: 1.1rem; margin-bottom: 10px; resize: none; outline: none;
+            font-size: 1.1rem; resize: none; outline: none;
         }
+
+        #result-area {
+            width: 100%; background: #1e1e1e; padding: 10px; border-radius: 8px;
+            border-left: 5px solid var(--accent-blue);
+            font-size: 1rem; word-wrap: break-word; flex-shrink: 0;
+            min-height: 45px;
+        }
+
+        #controls {
+            margin-top: 10px; flex-shrink: 0;
+            width: 100%;
+        }
+
         .grid {
             display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;
-            width: 100%; max-width: 500px;
+            width: 100%; max-width: 500px; margin: 0 auto;
         }
+
         button {
             padding: 15px 2px; font-size: 1rem; border: none; border-radius: 5px;
             background: var(--btn-bg); color: white; touch-action: manipulation;
@@ -37,71 +64,77 @@
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
 
-        #result-area {
-            width: 95%; background: #1e1e1e; padding: 12px; border-radius: 8px;
-            margin-top: 10px; min-height: 45px; border-left: 5px solid var(--accent-blue);
-            font-size: 1.1rem; word-wrap: break-word;
-        }
-        
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; width: 85%; max-height: 80%; overflow-y: auto;
+            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; 
+            width: 85%; max-height: 80vh; 
         }
+        .modal.active { display: flex; flex-direction: column; }
+        .modal-content { overflow-y: auto; flex-grow: 1; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; }
-        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; }
         .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
-        .list-item { padding: 15px; border-bottom: 1px solid #333; color: #00ff00; font-family: monospace; }
+        .list-item { padding: 15px; border-bottom: 1px solid #333; color: #00ff00; font-family: monospace; cursor: pointer; }
+        .hist-date { color: #888; font-size: 0.7rem; display: block; margin-bottom: 3px; }
     </style>
 </head>
 <body>
 
-    <textarea id="display" placeholder="Variablen & Formeln..." spellcheck="false"></textarea>
-
-    <div class="grid">
-        <button class="op" onclick="add('+')">+</button>
-        <button class="op" onclick="add('-')">-</button>
-        <button class="op" onclick="add('*')">*</button>
-        <button class="op" onclick="add('/')">/</button>
-        <button class="op" onclick="add('=')">=</button>
-        <button class="del" id="backspaceBtn">⌫</button>
-
-        <button onclick="add('(')">(</button>
-        <button onclick="add(')')">)</button>
-        <button onclick="add('^')">^</button>
-        <button onclick="add('pi')">pi</button>
-        <button onclick="add('0x')">0x</button>
-        <button class="op" style="background:#444" onclick="openMath()">Math</button>
-
-        <button class="func" onclick="openFunc()">Func</button>
-        <button onclick="add('ln(')">ln</button>
-        <button onclick="add('log(')">log</button>
-        <button onclick="add('sqrt(')">sqrt</button>
-        <button class="equal" onclick="calculate()">BERECHNEN</button>
+    <div id="top-section">
+        <textarea id="display" placeholder="Variablen & Formeln..." spellcheck="false"></textarea>
+        <div id="result-area">Bereit...</div>
     </div>
 
-    <div id="result-area">Bereit...</div>
+    <div id="controls">
+        <div class="grid">
+            <button class="op" onclick="add('+')">+</button>
+            <button class="op" onclick="add('-')">-</button>
+            <button class="op" onclick="add('*')">*</button>
+            <button class="op" onclick="add('/')">/</button>
+            <button class="op" onclick="add('=')">=</button>
+            <button class="del" id="backspaceBtn">⌫</button>
+
+            <button onclick="add('(')">(</button>
+            <button onclick="add(')')">)</button>
+            <button onclick="add('^')">^</button>
+            <button onclick="add('pi')">pi</button>
+            <button class="op" style="background:#444" onclick="openMath()">Math</button>
+            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+
+            <button class="func" onclick="openFunc()">Func</button>
+            <button onclick="add('ln(')">ln</button>
+            <button onclick="add('log(')">log</button>
+            <button onclick="add('sqrt(')">sqrt</button>
+            <button class="equal" onclick="calculate()">BERECHNEN</button>
+        </div>
+    </div>
 
     <div id="overlay" onclick="closeAllModals()"></div>
 
     <div id="mathModal" class="modal" style="border: 2px solid var(--accent-green);">
-        <div style="margin-bottom: 15px;">
-            <span style="font-size: 1.2rem; font-weight: bold; color: var(--accent-green);">Math</span>
-            <span id="modeDisplay" class="mode-toggle" onclick="toggleDegRad()">Mode: DEG</span>
-        </div>
-        <div class="menu-grid" id="mathGrid"></div>
-        <button class="menu-btn" style="width:100%; background:var(--accent-red)" onclick="closeAllModals()">Schließen</button>
+        <div style="margin-bottom: 15px; flex-shrink: 0;"><span style="font-size: 1.2rem; color: var(--accent-green);">Math</span><span id="modeDisplay" class="mode-toggle" onclick="toggleDegRad()">Mode: DEG</span></div>
+        <div class="modal-content"><div class="menu-grid" id="mathGrid"></div></div>
+        <button class="menu-btn" style="width:100%; background:var(--accent-red);" onclick="closeAllModals()">Schließen</button>
     </div>
 
     <div id="modal" class="modal" style="border: 2px solid var(--accent-blue);">
-        <h3 style="margin-top:0; color:var(--accent-blue)">Bibliothek</h3>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
-            <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
-            <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
-            <div class="menu-btn" onclick="triggerImport()">📥 Import</div>
-            <div class="menu-btn" onclick="closeAllModals()">✖ Zu</div>
+        <div style="flex-shrink: 0;"><h3 style="margin-top:0; color:var(--accent-blue)">Bibliothek</h3>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
+                <div class="menu-btn" onclick="saveCurrent()">💾 Save</div><div class="menu-btn" onclick="exportToFile()">📤 Export</div>
+                <div class="menu-btn" onclick="triggerImport()">📥 Import</div><div class="menu-btn" onclick="closeAllModals()">✖ Zu</div>
+            </div>
         </div>
-        <div id="listContent"></div>
+        <div class="modal-content" id="listContent"></div>
+    </div>
+
+    <div id="historyModal" class="modal" style="border: 2px solid var(--accent-gray);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; flex-shrink:0;">
+            <span style="font-size:1.2rem; color:var(--accent-gray);">History</span>
+            <button class="mode-toggle" style="background:var(--accent-red)" onclick="clearHistory()">Löschen</button>
+        </div>
+        <div class="modal-content" id="historyContent"></div>
+        <button class="menu-btn" style="width:100%;" onclick="closeAllModals()">Schließen</button>
     </div>
 
     <input type="file" id="fileInput" style="display:none" onchange="importFromFile(event)">
@@ -110,32 +143,36 @@
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
         const delBtn = document.getElementById('backspaceBtn');
-        
-        // Reihenfolge wie von dir gewünscht
-        const mathFuncs = [
-            'sin(', 'cos(', 'tan(', 
-            'asin(', 'acos(', 'atan(',
-            'ceil(', 'floor(', 'round(',
-            'abs(', 'exp(', 'random()'
-        ];
+        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'random()'];
 
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
 
-        function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
+        // Visual Viewport Adaption
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                document.body.style.height = window.visualViewport.height + "px";
+            });
+        }
 
+        // --- NEU: Hilfsfunktion zum Tastatur ausblenden ---
+        function hideKeyboard() {
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+        }
+
+        function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
         function toggleDegRad() {
             useDegrees = !useDegrees;
             document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD";
         }
-
         function add(v) {
             const start = display.selectionStart, end = display.selectionEnd;
             display.setRangeText(v, start, end, 'end');
             display.focus();
         }
-
         function backspace() {
             const start = display.selectionStart, end = display.selectionEnd;
             if (start === end && start > 0) {
@@ -147,34 +184,26 @@
             display.focus();
         }
 
-        // --- BACKSPACE & UNDO LOGIK (KORRIGIERT) ---
         function handleBackspaceAction() {
             if (display.value === "" && lastContent !== "") {
                 display.value = lastContent;
                 resArea.innerText = 'Wiederhergestellt.';
                 lastContent = ""; 
                 display.focus();
-                return true; // Undo wurde ausgeführt
+                return true;
             } else {
                 backspace();
-                return false; // Normales Löschen
+                return false;
             }
         }
 
         delBtn.onmousedown = delBtn.ontouchstart = (e) => {
             e.preventDefault();
-            
-            // Wir speichern den Zustand VOR dem allerersten Löschen
             const contentBeforeFirstClick = display.value;
-            
-            // Ersten Klick ausführen
             const wasUndo = handleBackspaceAction();
-
-            // Nur wenn es kein Undo war, starten wir den Timer für "Alles Löschen"
             if (!wasUndo) {
                 bsTimer = setTimeout(() => {
                     if (contentBeforeFirstClick !== "") {
-                        // Hier nutzen wir den Stand von VOR dem Klick für das Backup
                         lastContent = contentBeforeFirstClick;
                         display.value = '';
                         resArea.innerText = 'Alles gelöscht. (⌫ für Undo)';
@@ -184,45 +213,22 @@
         };
 
         delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
-        // --------------------------------------------
-        function openMath() {
-            const grid = document.getElementById('mathGrid');
-            grid.innerHTML = '';
-            mathFuncs.forEach(f => {
-                const b = document.createElement('div');
-                b.className = 'menu-btn'; 
-                b.innerText = f.includes('()') ? 'random' : f.replace('(', '');
-                b.onclick = () => { add(f); closeAllModals(); };
-                grid.appendChild(b);
-            });
-            document.getElementById('mathModal').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
-        }
 
         function calculate() {
+            hideKeyboard(); // Tastatur schließen
             try {
                 let input = display.value;
+                if(!input.trim()) return;
+                let rawInput = input;
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1');
                 input = input.replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
-                
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
-
-                let code = input
-                    .replace(/pi/g, 'Math.PI')
-                    .replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
-                    // Invers Trig mit korrektem Klammer-Umschluss
+                let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
                     .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
-                    // Normale Trig
-                    .replace(/\bsin\(/g, 'Math.sin' + trigIn)
-                    .replace(/\bcos\(/g, 'Math.cos' + trigIn)
-                    .replace(/\btan\(/g, 'Math.tan' + trigIn)
-                    // Restliche Funktionen
-                    .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
-                    .replace(/\blog\(/g, 'logBase(')
-                    .replace(/\bln\(/g, 'Math.log(')
-                    .replace(/\^/g, '**');
+                    .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
+                    .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(').replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**');
 
                 let res = eval(code.split('\n').map(l => {
                     let t = l.trim();
@@ -230,34 +236,65 @@
                 }).join(';'));
 
                 if(res !== undefined) {
-                    let hex = (Number.isInteger(res)) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "";
-                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + res.toLocaleString('de-DE') + hex;
+                    let resStr = res.toLocaleString('de-DE');
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + ((Number.isInteger(res)) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
+                    addToHistory(rawInput, resStr);
                 }
             } catch(e) { resArea.innerText = "Fehler: " + e.message; }
         }
 
-        function closeAllModals() {
-            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-            document.getElementById('overlay').style.display = 'none';
+        function showModal(id) { 
+            hideKeyboard(); // Tastatur schließen vor Modal-Anzeige
+            document.getElementById(id).classList.add('active'); 
+            document.getElementById('overlay').style.display = 'block'; 
+        }
+
+        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
+
+        function addToHistory(q, a) {
+            let history = JSON.parse(localStorage.getItem('calcHistory') || '[]');
+            history.unshift({ q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
+            if (history.length > 50) history.pop();
+            localStorage.setItem('calcHistory', JSON.stringify(history));
+        }
+
+        function openHistory() {
+            const history = JSON.parse(localStorage.getItem('calcHistory') || '[]');
+            const list = document.getElementById('historyContent');
+            list.innerHTML = history.length === 0 ? '<div class="list-item" style="color:#666">Noch keine Einträge</div>' : '';
+            history.forEach((item, index) => {
+                const div = document.createElement('div'); div.className = 'list-item';
+                div.innerHTML = `<span class="hist-date">${item.t}</span><div style="color:#fff; margin-bottom:3px">${item.q}</div><div style="color:var(--accent-green); font-weight:bold">= ${item.a}</div>`;
+                div.onclick = () => { display.value = item.q; closeAllModals(); };
+                let t; div.onmousedown = div.ontouchstart = () => { t = setTimeout(() => { if(confirm("Eintrag löschen?")) { history.splice(index, 1); localStorage.setItem('calcHistory', JSON.stringify(history)); openHistory(); } }, 800); };
+                div.onmouseup = div.ontouchend = () => clearTimeout(t);
+                list.appendChild(div);
+            });
+            showModal('historyModal');
+        }
+
+        function clearHistory() { if(confirm("Ganze History löschen?")) { localStorage.removeItem('calcHistory'); openHistory(); } }
+
+        function openMath() {
+            const grid = document.getElementById('mathGrid'); grid.innerHTML = '';
+            mathFuncs.forEach(f => {
+                const b = document.createElement('div'); b.className = 'menu-btn'; b.innerText = f.replace('(', '').replace(')', '');
+                b.onclick = () => { add(f); closeAllModals(); }; grid.appendChild(b);
+            });
+            showModal('mathModal');
         }
 
         function openFunc() {
             const formulas = JSON.parse(localStorage.getItem('mySpecs') || '{}');
-            const list = document.getElementById('listContent');
-            list.innerHTML = '';
+            const list = document.getElementById('listContent'); list.innerHTML = '';
             Object.keys(formulas).sort().forEach(name => {
-                const item = document.createElement('div');
-                item.className = 'list-item'; item.innerText = name;
+                const item = document.createElement('div'); item.className = 'list-item'; item.innerText = name;
                 item.onclick = () => { display.value = formulas[name]; closeAllModals(); };
-                let t;
-                item.onmousedown = item.ontouchstart = () => {
-                    t = setTimeout(() => { if(confirm("Löschen: " + name + "?")) { delete formulas[name]; localStorage.setItem('mySpecs', JSON.stringify(formulas)); openFunc(); } }, 800);
-                };
+                let t; item.onmousedown = item.ontouchstart = () => { t = setTimeout(() => { if(confirm("Löschen: " + name + "?")) { delete formulas[name]; localStorage.setItem('mySpecs', JSON.stringify(formulas)); openFunc(); } }, 800); };
                 item.onmouseup = item.ontouchend = () => clearTimeout(t);
                 list.appendChild(item);
             });
-            document.getElementById('modal').style.display = 'block';
-            document.getElementById('overlay').style.display = 'block';
+            showModal('modal');
         }
 
         function saveCurrent() {
@@ -269,8 +306,7 @@
 
         function exportToFile() {
             const data = localStorage.getItem('mySpecs') || '{}';
-            let fileName = prompt("Dateiname:", "bibliothek");
-            if(!fileName) return;
+            let fileName = prompt("Dateiname:", "bibliothek"); if(!fileName) return;
             const blob = new Blob([data], {type: 'application/json'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = fileName + '.json'; a.click();
@@ -280,22 +316,11 @@
         function importFromFile(e) {
             const file = e.target.files[0]; if(!file) return;
             const reader = new FileReader();
-            reader.onload = (ev) => {
-                try {
-                    JSON.parse(ev.target.result);
-                    if(confirm("Bibliothek ersetzen?")) { localStorage.setItem('mySpecs', ev.target.result); openFunc(); }
-                } catch { alert("Fehler!"); }
-            };
+            reader.onload = (ev) => { try { JSON.parse(ev.target.result); if(confirm("Bibliothek ersetzen?")) { localStorage.setItem('mySpecs', ev.target.result); openFunc(); } } catch { alert("Fehler!"); } };
             reader.readAsText(file);
         }
 
-        // Verhindert Fokus-Verlust bei Button-Klicks
-        document.querySelectorAll('button').forEach(btn => {
-            if(btn.id !== 'backspaceBtn') {
-                btn.addEventListener('mousedown', e => e.preventDefault());
-            }
-        });
+        document.querySelectorAll('button').forEach(btn => { if(btn.id !== 'backspaceBtn') { btn.addEventListener('mousedown', e => e.preventDefault()); } });
     </script>
 </body>
 </html>
-
