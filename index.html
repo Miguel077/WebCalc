@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SpeQ Pro Mobile</title>
+    <style>
+        :root {
+            --bg-color: #121212; --text-color: #e0e0e0; --btn-bg: #333;
+            --accent-blue: #2c5d87; --accent-green: #27ae60; --accent-red: #c0392b;
+        }
+        body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Courier New', monospace; display: flex;
+            flex-direction: column; align-items: center; padding: 10px; margin: 0; overflow: hidden;
+        }
+        #display {
+            width: 95%; height: 180px; background: #000; color: #00ff00;
+            border: 1px solid #444; border-radius: 8px; padding: 10px;
+            font-size: 1.1rem; margin-bottom: 10px; resize: none; outline: none;
+        }
+        .grid {
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;
+            width: 100%; max-width: 500px;
+        }
+        button {
+            padding: 15px 2px; font-size: 1rem; border: none; border-radius: 5px;
+            background: var(--btn-bg); color: white; touch-action: manipulation;
+        }
+        .op { color: #3498db; font-weight: bold; }
+        .func { background: #5d4037; font-weight: bold; }
+        .del { background: var(--accent-red); }
+        .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
+
+        #result-area {
+            width: 95%; background: #1e1e1e; padding: 12px; border-radius: 8px;
+            margin-top: 10px; min-height: 45px; border-left: 5px solid var(--accent-blue);
+            font-size: 1.1rem; word-wrap: break-word;
+        }
+        
+        .modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; width: 85%; max-height: 80%; overflow-y: auto;
+        }
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; }
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 20px; }
+        .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; }
+        .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
+        .list-item { padding: 15px; border-bottom: 1px solid #333; color: #00ff00; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <textarea id="display" placeholder="Variablen & Formeln..." spellcheck="false"></textarea>
+
+    <div class="grid">
+        <button class="op" onclick="add('+')">+</button>
+        <button class="op" onclick="add('-')">-</button>
+        <button class="op" onclick="add('*')">*</button>
+        <button class="op" onclick="add('/')">/</button>
+        <button class="op" onclick="add('=')">=</button>
+        <button class="del" id="backspaceBtn">⌫</button>
+
+        <button onclick="add('(')">(</button>
+        <button onclick="add(')')">)</button>
+        <button onclick="add('^')">^</button>
+        <button onclick="add('pi')">pi</button>
+        <button onclick="add('0x')">0x</button>
+        <button class="op" style="background:#444" onclick="openMath()">Math</button>
+
+        <button class="func" onclick="openFunc()">Func</button>
+        <button onclick="add('ln(')">ln</button>
+        <button onclick="add('log(')">log</button>
+        <button onclick="add('sqrt(')">sqrt</button>
+        <button class="equal" onclick="calculate()">BERECHNEN</button>
+    </div>
+
+    <div id="result-area">Bereit...</div>
+
+    <div id="overlay" onclick="closeAllModals()"></div>
+
+    <div id="mathModal" class="modal" style="border: 2px solid var(--accent-green);">
+        <div style="margin-bottom: 15px;">
+            <span style="font-size: 1.2rem; font-weight: bold; color: var(--accent-green);">Math</span>
+            <span id="modeDisplay" class="mode-toggle" onclick="toggleDegRad()">Mode: DEG</span>
+        </div>
+        <div class="menu-grid" id="mathGrid"></div>
+        <button class="menu-btn" style="width:100%; background:var(--accent-red)" onclick="closeAllModals()">Schließen</button>
+    </div>
+
+    <div id="modal" class="modal" style="border: 2px solid var(--accent-blue);">
+        <h3 style="margin-top:0; color:var(--accent-blue)">Bibliothek</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
+            <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
+            <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
+            <div class="menu-btn" onclick="triggerImport()">📥 Import</div>
+            <div class="menu-btn" onclick="closeAllModals()">✖ Zu</div>
+        </div>
+        <div id="listContent"></div>
+    </div>
+
+    <input type="file" id="fileInput" style="display:none" onchange="importFromFile(event)">
+
+    <script>
+        const display = document.getElementById('display');
+        const resArea = document.getElementById('result-area');
+        const delBtn = document.getElementById('backspaceBtn');
+        
+        // Reihenfolge wie von dir gewünscht
+        const mathFuncs = [
+            'sin(', 'cos(', 'tan(', 
+            'asin(', 'acos(', 'atan(',
+            'ceil(', 'floor(', 'round(',
+            'abs(', 'exp(', 'random()'
+        ];
+
+        let lastContent = "";
+        let useDegrees = true;
+        let bsTimer;
+
+        function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
+
+        function toggleDegRad() {
+            useDegrees = !useDegrees;
+            document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD";
+        }
+
+        function add(v) {
+            const start = display.selectionStart, end = display.selectionEnd;
+            display.setRangeText(v, start, end, 'end');
+            display.focus();
+        }
+
+        function backspace() {
+            const start = display.selectionStart, end = display.selectionEnd;
+            if (start === end && start > 0) {
+                display.value = display.value.slice(0, start - 1) + display.value.slice(start);
+                display.selectionStart = display.selectionEnd = start - 1;
+            } else if (start !== end) {
+                display.setRangeText('', start, end, 'end');
+            }
+            display.focus();
+        }
+
+        // --- BACKSPACE & UNDO LOGIK (KORRIGIERT) ---
+        function handleBackspaceAction() {
+            if (display.value === "" && lastContent !== "") {
+                display.value = lastContent;
+                resArea.innerText = 'Wiederhergestellt.';
+                lastContent = ""; 
+                display.focus();
+                return true; // Undo wurde ausgeführt
+            } else {
+                backspace();
+                return false; // Normales Löschen
+            }
+        }
+
+        delBtn.onmousedown = delBtn.ontouchstart = (e) => {
+            e.preventDefault();
+            
+            // Wir speichern den Zustand VOR dem allerersten Löschen
+            const contentBeforeFirstClick = display.value;
+            
+            // Ersten Klick ausführen
+            const wasUndo = handleBackspaceAction();
+
+            // Nur wenn es kein Undo war, starten wir den Timer für "Alles Löschen"
+            if (!wasUndo) {
+                bsTimer = setTimeout(() => {
+                    if (contentBeforeFirstClick !== "") {
+                        // Hier nutzen wir den Stand von VOR dem Klick für das Backup
+                        lastContent = contentBeforeFirstClick;
+                        display.value = '';
+                        resArea.innerText = 'Alles gelöscht. (⌫ für Undo)';
+                    }
+                }, 800);
+            }
+        };
+
+        delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
+        // --------------------------------------------
+        function openMath() {
+            const grid = document.getElementById('mathGrid');
+            grid.innerHTML = '';
+            mathFuncs.forEach(f => {
+                const b = document.createElement('div');
+                b.className = 'menu-btn'; 
+                b.innerText = f.includes('()') ? 'random' : f.replace('(', '');
+                b.onclick = () => { add(f); closeAllModals(); };
+                grid.appendChild(b);
+            });
+            document.getElementById('mathModal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function calculate() {
+            try {
+                let input = display.value;
+                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1');
+                input = input.replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
+                
+                let trigIn = useDegrees ? "(Math.PI/180*" : "(";
+
+                let code = input
+                    .replace(/pi/g, 'Math.PI')
+                    .replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
+                    // Invers Trig mit korrektem Klammer-Umschluss
+                    .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
+                    .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
+                    .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
+                    // Normale Trig
+                    .replace(/\bsin\(/g, 'Math.sin' + trigIn)
+                    .replace(/\bcos\(/g, 'Math.cos' + trigIn)
+                    .replace(/\btan\(/g, 'Math.tan' + trigIn)
+                    // Restliche Funktionen
+                    .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
+                    .replace(/\blog\(/g, 'logBase(')
+                    .replace(/\bln\(/g, 'Math.log(')
+                    .replace(/\^/g, '**');
+
+                let res = eval(code.split('\n').map(l => {
+                    let t = l.trim();
+                    return (t.includes('=') && !t.includes('==')) ? "var " + t : t;
+                }).join(';'));
+
+                if(res !== undefined) {
+                    let hex = (Number.isInteger(res)) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "";
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + res.toLocaleString('de-DE') + hex;
+                }
+            } catch(e) { resArea.innerText = "Fehler: " + e.message; }
+        }
+
+        function closeAllModals() {
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function openFunc() {
+            const formulas = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+            const list = document.getElementById('listContent');
+            list.innerHTML = '';
+            Object.keys(formulas).sort().forEach(name => {
+                const item = document.createElement('div');
+                item.className = 'list-item'; item.innerText = name;
+                item.onclick = () => { display.value = formulas[name]; closeAllModals(); };
+                let t;
+                item.onmousedown = item.ontouchstart = () => {
+                    t = setTimeout(() => { if(confirm("Löschen: " + name + "?")) { delete formulas[name]; localStorage.setItem('mySpecs', JSON.stringify(formulas)); openFunc(); } }, 800);
+                };
+                item.onmouseup = item.ontouchend = () => clearTimeout(t);
+                list.appendChild(item);
+            });
+            document.getElementById('modal').style.display = 'block';
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function saveCurrent() {
+            const name = prompt("Name für Set?"); if(!name) return;
+            const formulas = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+            formulas[name] = display.value; localStorage.setItem('mySpecs', JSON.stringify(formulas));
+            openFunc();
+        }
+
+        function exportToFile() {
+            const data = localStorage.getItem('mySpecs') || '{}';
+            let fileName = prompt("Dateiname:", "bibliothek");
+            if(!fileName) return;
+            const blob = new Blob([data], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = fileName + '.json'; a.click();
+        }
+
+        function triggerImport() { document.getElementById('fileInput').click(); }
+        function importFromFile(e) {
+            const file = e.target.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    JSON.parse(ev.target.result);
+                    if(confirm("Bibliothek ersetzen?")) { localStorage.setItem('mySpecs', ev.target.result); openFunc(); }
+                } catch { alert("Fehler!"); }
+            };
+            reader.readAsText(file);
+        }
+
+        // Verhindert Fokus-Verlust bei Button-Klicks
+        document.querySelectorAll('button').forEach(btn => {
+            if(btn.id !== 'backspaceBtn') {
+                btn.addEventListener('mousedown', e => e.preventDefault());
+            }
+        });
+    </script>
+</body>
+</html>
+
