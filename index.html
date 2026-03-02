@@ -28,7 +28,7 @@
         }
         #controls { margin-top: 8px; flex-shrink: 0; width: 100%; padding-bottom: env(safe-area-inset-bottom); }
         .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; width: 100%; max-width: 500px; margin: 0 auto; }
-        
+
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
         .func-btn { background: #5d4037; font-weight: bold; }
@@ -40,7 +40,7 @@
         /* Modals */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; 
+            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000;
             width: 90%; max-height: 80vh; border: 2px solid #444;
         }
         .modal.active { display: flex; flex-direction: column; }
@@ -49,8 +49,8 @@
         .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
         .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; cursor: pointer; }
         .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
-        .list-item { 
-            padding: 15px; border-bottom: 1px solid #333; color: #00ff00; 
+        .list-item {
+            padding: 15px; border-bottom: 1px solid #333; color: #00ff00;
             font-family: monospace; cursor: pointer; width: 100%; display: block;
             text-align: left; background: transparent; border-left: none; border-right: none; border-top: none;
         }
@@ -90,10 +90,10 @@
         <div id="extra-keys" class="grid" style="margin-top:4px;">
             <button class="hex" onclick="add('A')">A</button><button class="hex" onclick="add('B')">B</button><button class="hex" onclick="add('C')">C</button>
             <button class="num" onclick="add('7')">7</button><button class="num" onclick="add('8')">8</button><button class="num" onclick="add('9')">9</button>
-            
+
             <button class="hex" onclick="add('D')">D</button><button class="hex" onclick="add('E')">E</button><button class="hex" onclick="add('F')">F</button>
             <button class="num" onclick="add('4')">4</button><button class="num" onclick="add('5')">5</button><button class="num" onclick="add('6')">6</button>
-            
+
             <button class="hex" onclick="add('x')">0x</button><button class="hex" onclick="add('0')">0</button><button class="num" onclick="add('.')">.</button>
             <button class="num" onclick="add('1')">1</button><button class="num" onclick="add('2')">2</button><button class="num" onclick="add('3')">3</button>
         </div>
@@ -148,6 +148,8 @@
             else if (diff < -60) { display.inputMode = "none"; display.blur(); }
         });
 
+        function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
+
         function add(v) {
             const start = display.selectionStart, end = display.selectionEnd;
             display.setRangeText(v === 'x' ? '0x' : v, start, end, 'end');
@@ -190,7 +192,7 @@
                 if(!input.trim()) return;
                 let rawInput = input;
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
-                
+
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
                 let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
@@ -198,7 +200,7 @@
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
                     .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
-                    .replace(/\blog\(/g, '(Math.log10(').replace(/\bln\(/g, '(Math.log(').replace(/\^/g, '**');
+                    .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**');
 
                 let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
 
@@ -260,10 +262,10 @@
         }
 
         function saveCurrent() {
-            const n = prompt("Name für Favorit?"); 
+            const n = prompt("Name für Favorit?");
             if(n) {
                 const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
-                f[n] = display.value; 
+                f[n] = display.value;
                 localStorage.setItem('mySpecs', JSON.stringify(f));
                 openFunc();
             }
@@ -287,8 +289,8 @@
 
         // WICHTIG: Selektives preventDefault nur für die Haupt-Buttons, nicht für die Modal-Inhalte
         document.querySelectorAll('#controls button').forEach(btn => {
-            btn.addEventListener('mousedown', e => { 
-                if(btn.id !== 'backspaceBtn') e.preventDefault(); 
+            btn.addEventListener('mousedown', e => {
+                if(btn.id !== 'backspaceBtn') e.preventDefault();
             });
         });
     </script>
