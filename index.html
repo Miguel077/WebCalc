@@ -287,7 +287,7 @@
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(a.href);
-
+        }
         function importFromFile(e) {
             const reader = new FileReader();
             reader.onload = (ev) => { localStorage.setItem('mySpecs', ev.target.result); openFunc(); };
