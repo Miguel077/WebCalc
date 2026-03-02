@@ -37,15 +37,17 @@
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
         .num { background: #444; font-weight: bold; }
 
+        /* Modals Original Style */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; 
             width: 85%; max-height: 80vh; border: 2px solid #444;
         }
         .modal.active { display: flex; flex-direction: column; }
-        .modal-content { overflow-y: auto; flex-grow: 1; margin-bottom: 10px; }
+        .modal-content { overflow-y: auto; flex-grow: 1; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; }
-        .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; text-align: center; }
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; }
         .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
         .list-item { padding: 15px; border-bottom: 1px solid #333; color: #00ff00; font-family: monospace; cursor: pointer; }
     </style>
@@ -83,9 +85,11 @@
         <div id="extra-keys" class="grid" style="margin-top:4px;">
             <button class="hex" onclick="add('A')">A</button><button class="hex" onclick="add('B')">B</button><button class="hex" onclick="add('C')">C</button>
             <button class="num" onclick="add('7')">7</button><button class="num" onclick="add('8')">8</button><button class="num" onclick="add('9')">9</button>
+            
             <button class="hex" onclick="add('D')">D</button><button class="hex" onclick="add('E')">E</button><button class="hex" onclick="add('F')">F</button>
             <button class="num" onclick="add('4')">4</button><button class="num" onclick="add('5')">5</button><button class="num" onclick="add('6')">6</button>
-            <button class="hex" onclick="add('x')">0x</button><button class="num" onclick="add('.')">.</button><button class="num" onclick="add('0')">0</button>
+            
+            <button class="hex" onclick="add('x')">0x</button><button class="hex" onclick="add('0')">0</button><button class="num" onclick="add('.')">.</button>
             <button class="num" onclick="add('1')">1</button><button class="num" onclick="add('2')">2</button><button class="num" onclick="add('3')">3</button>
         </div>
     </div>
@@ -94,27 +98,37 @@
 
     <div id="mathModal" class="modal" style="border-color: var(--accent-green);">
         <div style="margin-bottom: 15px;"><span style="color: var(--accent-green); font-weight:bold;">Math</span><span id="modeDisplay" class="mode-toggle" onclick="toggleDegRad()">Mode: DEG</span></div>
-        <div class="modal-content"><div class="grid" id="mathGrid" style="grid-template-columns: repeat(3, 1fr); gap: 8px;"></div></div>
+        <div class="modal-content"><div class="menu-grid" id="mathGrid"></div></div>
         <button class="menu-btn" style="width:100%; background:var(--accent-red);" onclick="closeAllModals()">Schließen</button>
     </div>
 
     <div id="historyModal" class="modal" style="border-color: var(--accent-gray);">
-        <div style="margin-bottom:15px;"><span style="color: var(--accent-gray); font-weight:bold;">History</span></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <span style="color: var(--accent-gray); font-weight:bold;">History</span>
+            <button class="mode-toggle" style="background:var(--accent-red)" onclick="clearHistory()">Löschen</button>
+        </div>
         <div class="modal-content" id="historyContent"></div>
         <button class="menu-btn" style="width:100%;" onclick="closeAllModals()">Schließen</button>
     </div>
 
     <div id="funcModal" class="modal" style="border-color: var(--accent-blue);">
-        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek</span><span class="mode-toggle" onclick="saveCurrent()">💾 Save</span></div>
+        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek</span></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
+            <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
+            <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
+            <div class="menu-btn" onclick="triggerImport()">📥 Import</div>
+            <div class="menu-btn" onclick="closeAllModals()">✖ Zu</div>
+        </div>
         <div class="modal-content" id="funcContent"></div>
-        <button class="menu-btn" style="width:100%;" onclick="closeAllModals()">Schließen</button>
     </div>
+
+    <input type="file" id="fileInput" style="display:none" onchange="importFromFile(event)">
 
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
         const delBtn = document.getElementById('backspaceBtn');
-        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'random()'];
+        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'sqrt(', 'random()'];
 
         let lastContent = "";
         let useDegrees = true;
@@ -135,7 +149,6 @@
             display.focus();
         }
 
-        // --- BACKSPACE ORIGINAL LOGIK ---
         function backspace() {
             const start = display.selectionStart, end = display.selectionEnd;
             if (start === end && start > 0) {
@@ -153,7 +166,6 @@
             if (display.value === "" && lastContent !== "") {
                 display.value = lastContent;
                 lastContent = "";
-                resArea.innerText = "Wiederhergestellt";
                 return;
             }
             backspace();
@@ -161,35 +173,29 @@
                 if (contentBefore !== "") {
                     lastContent = contentBefore;
                     display.value = "";
-                    resArea.innerText = "Geleert (⌫ für Undo)";
                 }
             }, 600);
         };
         delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
 
-        // --- BERECHNUNG ORIGINAL ENGINE ---
         function calculate() {
             display.inputMode = "none"; display.blur();
             try {
                 let input = display.value;
                 if(!input.trim()) return;
                 let rawInput = input;
-                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1');
-                input = input.replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
+                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
                 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
                 let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
+                    .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
                     .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
-                    .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
                     .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
                     .replace(/\blog\(/g, '(Math.log10(').replace(/\bln\(/g, '(Math.log(').replace(/\^/g, '**');
 
-                let res = eval(code.split('\n').map(l => {
-                    let t = l.trim();
-                    return (t.includes('=') && !t.includes('==')) ? "var " + t : t;
-                }).join(';'));
+                let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
 
                 if(res !== undefined) {
                     let resStr = res.toLocaleString('de-DE');
@@ -199,27 +205,26 @@
             } catch(e) { resArea.innerText = "Fehler: " + e.message; }
         }
 
-        // --- MODAL HANDLING ORIGINAL STIL ---
-        function showModal(id) { document.getElementById(id).classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
-        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
-
+        // --- HISTORY & FUNC (ORIGINAL LOGIK) ---
         function addToHistory(q, a) {
             let h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             h.unshift({q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
             localStorage.setItem('calcHist', JSON.stringify(h.slice(0, 50)));
         }
 
+        function clearHistory() { localStorage.removeItem('calcHist'); openHistory(); }
+
         function openHistory() {
             const h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             const cont = document.getElementById('historyContent');
-            cont.innerHTML = h.map(i => `<div class="list-item" onclick="display.value='${i.q}';closeAllModals()"><small>${i.t}</small><br>${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b></div>`).join('') || "Kein Verlauf";
+            cont.innerHTML = h.map(i => `<div class="list-item" onclick="display.value='${i.q}';closeAllModals()"><small>${i.t}</small> ${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b></div>`).join('') || "Kein Verlauf";
             showModal('historyModal');
         }
 
         function openMath() {
             const grid = document.getElementById('mathGrid'); grid.innerHTML = '';
             mathFuncs.forEach(f => {
-                const b = document.createElement('button'); b.innerText = f.replace('(', '').replace(')', '');
+                const b = document.createElement('div'); b.className = 'menu-btn'; b.innerText = f.replace('(', '').replace(')', '');
                 b.onclick = () => { add(f); closeAllModals(); }; grid.appendChild(b);
             });
             showModal('mathModal');
@@ -228,21 +233,34 @@
         function openFunc() {
             const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
             const cont = document.getElementById('funcContent');
-            cont.innerHTML = Object.keys(f).map(n => `<div class="list-item" onclick="display.value='${f[n]}';closeAllModals()">${n}</div>`).join('') || "Keine Favoriten";
+            cont.innerHTML = Object.keys(f).sort().map(n => `<div class="list-item" onclick="display.value='${f[n]}';closeAllModals()">${n}</div>`).join('') || "Leer";
             showModal('funcModal');
         }
 
         function saveCurrent() {
-            const n = prompt("Name?"); if(n) {
+            const n = prompt("Name für Favorit?"); if(n) {
                 const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
                 f[n] = display.value; localStorage.setItem('mySpecs', JSON.stringify(f));
                 openFunc();
             }
         }
 
+        function triggerImport() { document.getElementById('fileInput').click(); }
+        function exportToFile() {
+            const data = localStorage.getItem('mySpecs') || '{}';
+            const blob = new Blob([data], {type: 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'calc_library.json'; a.click();
+        }
+        function importFromFile(e) {
+            const reader = new FileReader();
+            reader.onload = (ev) => { localStorage.setItem('mySpecs', ev.target.result); openFunc(); };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        function showModal(id) { document.getElementById(id).classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
+        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
         function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
 
-        // Button Fokus-Fix
         document.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('mousedown', e => { if(btn.id !== 'backspaceBtn') e.preventDefault(); });
         });
