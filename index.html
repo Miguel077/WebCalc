@@ -273,11 +273,21 @@
         }
 
         function triggerImport() { document.getElementById('fileInput').click(); }
+
         function exportToFile() {
             const data = localStorage.getItem('mySpecs') || '{}';
+            const n = prompt("Dateiname für Export?", "calc_library.json");
+            if (!n) return; // Abbrechen, falls kein Name eingegeben wurde
+
             const blob = new Blob([data], {type: 'application/json'});
-            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'calc_library.json'; a.click();
-        }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = n.endsWith('.json') ? n : n + '.json';
+            document.body.appendChild(a); // Notwendig für einige Browser
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+
         function importFromFile(e) {
             const reader = new FileReader();
             reader.onload = (ev) => { localStorage.setItem('mySpecs', ev.target.result); openFunc(); };
