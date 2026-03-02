@@ -21,6 +21,7 @@
             width: 100%; flex: 1; background: #000; color: #00ff00;
             border: 1px solid #444; border-radius: 8px; padding: 10px;
             font-size: 1.1rem; resize: none; outline: none;
+            touch-action: none; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
         }
         #result-area {
             width: 100%; background: #1e1e1e; padding: 8px; border-radius: 8px;
@@ -139,14 +140,41 @@
         let useDegrees = true;
         let bsTimer;
 
-        // Gestensteuerung
+
+        // Optimierte Gestensteuerung
         let touchStartY = 0;
-        display.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY, {passive: true});
+        display.addEventListener('touchstart', e => {
+            touchStartY = e.touches[0].clientY;
+        }, {passive: false}); // passive: false erlaubt uns preventDefault()
+
         display.addEventListener('touchend', e => {
-            const diff = touchStartY - e.changedTouches[0].clientY;
-            if (diff > 60) { display.inputMode = "text"; display.focus(); }
-            else if (diff < -60) { display.inputMode = "none"; display.blur(); }
-        });
+            const touchEndY = e.changedTouches[0].clientY;
+            const diff = touchStartY - touchEndY;
+        
+            if (Math.abs(diff) > 30) { // Schwelle auf 30px gesenkt für schnellere Reaktion
+                if (diff > 0) { // Wisch nach oben
+                    display.inputMode = "text";
+                    display.focus();
+                    // Kleiner Trick: Cursor ans Ende setzen erzwingt das Aufpoppen
+                    const val = display.value;
+                    display.value = '';
+                    display.value = val;
+                } else { // Wisch nach unten
+                    display.inputMode = "none";
+                    display.blur();
+                }
+                e.preventDefault(); // Verhindert, dass der Browser die Geste "verschluckt"
+            }
+        }, {passive: false});
+
+        // // Gestensteuerung
+        // let touchStartY = 0;
+        // display.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY, {passive: true});
+        // display.addEventListener('touchend', e => {
+        //     const diff = touchStartY - e.changedTouches[0].clientY;
+        //     if (diff > 60) { display.inputMode = "text"; display.focus(); }
+        //     else if (diff < -60) { display.inputMode = "none"; display.blur(); }
+        // });
 
         function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
 
