@@ -13,7 +13,7 @@
         :root {
             --bg-color: #121212; --text-color: #e0e0e0; --btn-bg: #333;
             --accent-blue: #2c5d87; --accent-green: #27ae60; --accent-red: #c0392b;
-            --accent-gray: #455a64; --hex-btn: #252525;
+            --accent-gray: #455a64; --hex-btn: #1a1a1a;
         }
         * { box-sizing: border-box; }
         body {
@@ -45,15 +45,15 @@
             min-height: 45px;
         }
 
-        #controls {
-            margin-top: 10px; flex-shrink: 0;
-            width: 100%;
-        }
+        #controls { margin-top: 10px; flex-shrink: 0; width: 100%; }
 
         .grid {
             display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
             width: 100%; max-width: 500px; margin: 0 auto;
         }
+
+        /* Der Ziffern/Hex-Block, der bei Tastatur ausgeblendet wird */
+        #extra-keys { margin-top: 4px; }
 
         button {
             padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px;
@@ -63,10 +63,9 @@
         .func { background: #5d4037; font-weight: bold; }
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
-        .hex { background: var(--hex-btn); color: #aaa; font-size: 0.9rem; }
+        .hex { background: var(--hex-btn); color: #8e44ad; font-weight: bold; }
         .num { background: #444; font-weight: bold; }
 
-        /* Modals */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; 
@@ -79,13 +78,12 @@
         .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; }
         .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
         .list-item { padding: 15px; border-bottom: 1px solid #333; color: #00ff00; font-family: monospace; cursor: pointer; }
-        .hist-date { color: #888; font-size: 0.7rem; display: block; margin-bottom: 3px; }
     </style>
 </head>
 <body>
 
     <div id="top-section">
-        <textarea id="display" placeholder="Variablen & Formeln..." spellcheck="false"></textarea>
+        <textarea id="display" placeholder="Eingabe..." spellcheck="false"></textarea>
         <div id="result-area">Bereit...</div>
     </div>
 
@@ -110,27 +108,29 @@
             <button onclick="add('log(')">log</button>
             <button onclick="add('sqrt(')">sqrt</button>
             <button class="equal" onclick="calculate()">BERECHNEN</button>
+        </div>
 
-            <button class="num" onclick="add('7')">7</button>
-            <button class="num" onclick="add('8')">8</button>
-            <button class="num" onclick="add('9')">9</button>
+        <div id="extra-keys" class="grid">
             <button class="hex" onclick="add('A')">A</button>
             <button class="hex" onclick="add('B')">B</button>
             <button class="hex" onclick="add('C')">C</button>
-
-            <button class="num" onclick="add('4')">4</button>
-            <button class="num" onclick="add('5')">5</button>
-            <button class="num" onclick="add('6')">6</button>
+            <button class="num" onclick="add('7')">7</button>
+            <button class="num" onclick="add('8')">8</button>
+            <button class="num" onclick="add('9')">9</button>
+            
             <button class="hex" onclick="add('D')">D</button>
             <button class="hex" onclick="add('E')">E</button>
             <button class="hex" onclick="add('F')">F</button>
+            <button class="num" onclick="add('4')">4</button>
+            <button class="num" onclick="add('5')">5</button>
+            <button class="num" onclick="add('6')">6</button>
 
+            <button class="hex" onclick="add('0x')">0x</button>
+            <button class="hex" onclick="add('0')">0</button>
+            <button class="hex" onclick="add('.')">.</button>
             <button class="num" onclick="add('1')">1</button>
             <button class="num" onclick="add('2')">2</button>
             <button class="num" onclick="add('3')">3</button>
-            <button class="num" onclick="add('0')">0</button>
-            <button class="num" onclick="add('.')">.</button>
-            <button class="num" onclick="add('x')">0x</button>
         </div>
     </div>
 
@@ -166,6 +166,7 @@
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
+        const extraKeys = document.getElementById('extra-keys');
         const delBtn = document.getElementById('backspaceBtn');
         const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'random()'];
 
@@ -173,9 +174,19 @@
         let useDegrees = true;
         let bsTimer;
 
+        // --- Viewport Logik: Verhindert zu kleine Fenster bei Android-Tastatur ---
         if (window.visualViewport) {
+            const initialHeight = window.innerHeight;
             window.visualViewport.addEventListener('resize', () => {
-                document.body.style.height = window.visualViewport.height + "px";
+                const currentHeight = window.visualViewport.height;
+                document.body.style.height = currentHeight + "px";
+                
+                // Wenn die Höhe deutlich schrumpft (Tastatur eingeblendet)
+                if (currentHeight < initialHeight * 0.85) {
+                    extraKeys.style.display = 'none'; // Verstecke Ziffernblock
+                } else {
+                    extraKeys.style.display = 'grid'; // Zeige Ziffernblock
+                }
             });
         }
 
@@ -190,45 +201,13 @@
         }
 
         function backspace() {
-            const start = display.selectionStart, end = display.selectionEnd;
-            if (start === end && start > 0) {
+            const start = display.selectionStart;
+            if (start > 0) {
                 display.value = display.value.slice(0, start - 1) + display.value.slice(start);
                 display.selectionStart = display.selectionEnd = start - 1;
-            } else if (start !== end) {
-                display.setRangeText('', start, end, 'end');
             }
             display.focus();
         }
-
-        function handleBackspaceAction() {
-            if (display.value === "" && lastContent !== "") {
-                display.value = lastContent;
-                resArea.innerText = 'Wiederhergestellt.';
-                lastContent = ""; 
-                display.focus();
-                return true;
-            } else {
-                backspace();
-                return false;
-            }
-        }
-
-        delBtn.onmousedown = delBtn.ontouchstart = (e) => {
-            e.preventDefault();
-            const contentBeforeFirstClick = display.value;
-            const wasUndo = handleBackspaceAction();
-            if (!wasUndo) {
-                bsTimer = setTimeout(() => {
-                    if (contentBeforeFirstClick !== "") {
-                        lastContent = contentBeforeFirstClick;
-                        display.value = '';
-                        resArea.innerText = 'Alles gelöscht. (⌫ für Undo)';
-                    }
-                }, 800);
-            }
-        };
-
-        delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
 
         function calculate() {
             hideKeyboard();
@@ -252,16 +231,14 @@
                 }).join(';'));
 
                 if(res !== undefined) {
-                    let resStr = res.toLocaleString('de-DE');
-                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + ((Number.isInteger(res)) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
-                    addToHistory(rawInput, resStr);
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + res.toLocaleString('de-DE') + ((Number.isInteger(res)) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
+                    addToHistory(rawInput, res.toLocaleString('de-DE'));
                 }
             } catch(e) { resArea.innerText = "Fehler: " + e.message; }
         }
 
         function showModal(id) { hideKeyboard(); document.getElementById(id).classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
         function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
-
         function addToHistory(q, a) {
             let history = JSON.parse(localStorage.getItem('calcHistory') || '[]');
             history.unshift({ q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) });
@@ -272,24 +249,20 @@
         function openHistory() {
             const history = JSON.parse(localStorage.getItem('calcHistory') || '[]');
             const list = document.getElementById('historyContent');
-            list.innerHTML = history.length === 0 ? '<div class="list-item" style="color:#666">Noch keine Einträge</div>' : '';
+            list.innerHTML = history.length === 0 ? '<div class="list-item" style="color:#666">Leer</div>' : '';
             history.forEach((item, index) => {
                 const div = document.createElement('div'); div.className = 'list-item';
-                div.innerHTML = `<span class="hist-date">${item.t}</span><div style="color:#fff; margin-bottom:3px">${item.q}</div><div style="color:var(--accent-green); font-weight:bold">= ${item.a}</div>`;
+                div.innerHTML = `<div style="color:#fff">${item.q}</div><div style="color:var(--accent-green)">= ${item.a}</div>`;
                 div.onclick = () => { display.value = item.q; closeAllModals(); };
-                let t; div.onmousedown = div.ontouchstart = () => { t = setTimeout(() => { if(confirm("Eintrag löschen?")) { history.splice(index, 1); localStorage.setItem('calcHistory', JSON.stringify(history)); openHistory(); } }, 800); };
-                div.onmouseup = div.ontouchend = () => clearTimeout(t);
                 list.appendChild(div);
             });
             showModal('historyModal');
         }
 
-        function clearHistory() { if(confirm("Ganze History löschen?")) { localStorage.removeItem('calcHistory'); openHistory(); } }
-
         function openMath() {
             const grid = document.getElementById('mathGrid'); grid.innerHTML = '';
             mathFuncs.forEach(f => {
-                const b = document.createElement('div'); b.className = 'menu-btn'; b.innerText = f.replace('(', '').replace(')', '');
+                const b = document.createElement('div'); b.className = 'menu-btn'; b.innerText = f.replace('(', '');
                 b.onclick = () => { add(f); closeAllModals(); }; grid.appendChild(b);
             });
             showModal('mathModal');
@@ -301,36 +274,19 @@
             Object.keys(formulas).sort().forEach(name => {
                 const item = document.createElement('div'); item.className = 'list-item'; item.innerText = name;
                 item.onclick = () => { display.value = formulas[name]; closeAllModals(); };
-                let t; item.onmousedown = item.ontouchstart = () => { t = setTimeout(() => { if(confirm("Löschen: " + name + "?")) { delete formulas[name]; localStorage.setItem('mySpecs', JSON.stringify(formulas)); openFunc(); } }, 800); };
-                item.onmouseup = item.ontouchend = () => clearTimeout(t);
                 list.appendChild(item);
             });
             showModal('modal');
         }
 
         function saveCurrent() {
-            const name = prompt("Name für Set?"); if(!name) return;
+            const name = prompt("Name?"); if(!name) return;
             const formulas = JSON.parse(localStorage.getItem('mySpecs') || '{}');
             formulas[name] = display.value; localStorage.setItem('mySpecs', JSON.stringify(formulas));
             openFunc();
         }
 
-        function exportToFile() {
-            const data = localStorage.getItem('mySpecs') || '{}';
-            let fileName = prompt("Dateiname:", "bibliothek"); if(!fileName) return;
-            const blob = new Blob([data], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a'); a.href = url; a.download = fileName + '.json'; a.click();
-        }
-
-        function triggerImport() { document.getElementById('fileInput').click(); }
-        function importFromFile(e) {
-            const file = e.target.files[0]; if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (ev) => { try { JSON.parse(ev.target.result); if(confirm("Bibliothek ersetzen?")) { localStorage.setItem('mySpecs', ev.target.result); openFunc(); } } catch { alert("Fehler!"); } };
-            reader.readAsText(file);
-        }
-
+        delBtn.onclick = () => backspace();
         document.querySelectorAll('button').forEach(btn => { if(btn.id !== 'backspaceBtn') { btn.addEventListener('mousedown', e => e.preventDefault()); } });
     </script>
 </body>
