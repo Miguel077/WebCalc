@@ -13,7 +13,7 @@
         :root {
             --bg-color: #121212; --text-color: #e0e0e0; --btn-bg: #333;
             --accent-blue: #2c5d87; --accent-green: #27ae60; --accent-red: #c0392b;
-            --accent-gray: #455a64;
+            --accent-gray: #455a64; --hex-btn: #252525;
         }
         * { box-sizing: border-box; }
         body {
@@ -27,7 +27,7 @@
 
         #top-section {
             display: flex; flex-direction: column;
-            flex: 1; min-height: 100px;
+            flex: 1; min-height: 80px;
             width: 100%; gap: 5px;
         }
 
@@ -51,19 +51,22 @@
         }
 
         .grid {
-            display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px;
+            display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px;
             width: 100%; max-width: 500px; margin: 0 auto;
         }
 
         button {
-            padding: 15px 2px; font-size: 1rem; border: none; border-radius: 5px;
+            padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px;
             background: var(--btn-bg); color: white; touch-action: manipulation;
         }
         .op { color: #3498db; font-weight: bold; }
         .func { background: #5d4037; font-weight: bold; }
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
+        .hex { background: var(--hex-btn); color: #aaa; font-size: 0.9rem; }
+        .num { background: #444; font-weight: bold; }
 
+        /* Modals */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; 
@@ -107,6 +110,27 @@
             <button onclick="add('log(')">log</button>
             <button onclick="add('sqrt(')">sqrt</button>
             <button class="equal" onclick="calculate()">BERECHNEN</button>
+
+            <button class="num" onclick="add('7')">7</button>
+            <button class="num" onclick="add('8')">8</button>
+            <button class="num" onclick="add('9')">9</button>
+            <button class="hex" onclick="add('A')">A</button>
+            <button class="hex" onclick="add('B')">B</button>
+            <button class="hex" onclick="add('C')">C</button>
+
+            <button class="num" onclick="add('4')">4</button>
+            <button class="num" onclick="add('5')">5</button>
+            <button class="num" onclick="add('6')">6</button>
+            <button class="hex" onclick="add('D')">D</button>
+            <button class="hex" onclick="add('E')">E</button>
+            <button class="hex" onclick="add('F')">F</button>
+
+            <button class="num" onclick="add('1')">1</button>
+            <button class="num" onclick="add('2')">2</button>
+            <button class="num" onclick="add('3')">3</button>
+            <button class="num" onclick="add('0')">0</button>
+            <button class="num" onclick="add('.')">.</button>
+            <button class="num" onclick="add('x')">0x</button>
         </div>
     </div>
 
@@ -149,30 +173,22 @@
         let useDegrees = true;
         let bsTimer;
 
-        // Visual Viewport Adaption
         if (window.visualViewport) {
             window.visualViewport.addEventListener('resize', () => {
                 document.body.style.height = window.visualViewport.height + "px";
             });
         }
 
-        // --- NEU: Hilfsfunktion zum Tastatur ausblenden ---
-        function hideKeyboard() {
-            if (document.activeElement) {
-                document.activeElement.blur();
-            }
-        }
-
+        function hideKeyboard() { if (document.activeElement) { document.activeElement.blur(); } }
         function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
-        function toggleDegRad() {
-            useDegrees = !useDegrees;
-            document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD";
-        }
+        function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
+        
         function add(v) {
             const start = display.selectionStart, end = display.selectionEnd;
             display.setRangeText(v, start, end, 'end');
             display.focus();
         }
+
         function backspace() {
             const start = display.selectionStart, end = display.selectionEnd;
             if (start === end && start > 0) {
@@ -215,7 +231,7 @@
         delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
 
         function calculate() {
-            hideKeyboard(); // Tastatur schließen
+            hideKeyboard();
             try {
                 let input = display.value;
                 if(!input.trim()) return;
@@ -243,12 +259,7 @@
             } catch(e) { resArea.innerText = "Fehler: " + e.message; }
         }
 
-        function showModal(id) { 
-            hideKeyboard(); // Tastatur schließen vor Modal-Anzeige
-            document.getElementById(id).classList.add('active'); 
-            document.getElementById('overlay').style.display = 'block'; 
-        }
-
+        function showModal(id) { hideKeyboard(); document.getElementById(id).classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
         function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
 
         function addToHistory(q, a) {
