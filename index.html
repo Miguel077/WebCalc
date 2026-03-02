@@ -28,28 +28,33 @@
         }
         #controls { margin-top: 8px; flex-shrink: 0; width: 100%; padding-bottom: env(safe-area-inset-bottom); }
         .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; width: 100%; max-width: 500px; margin: 0 auto; }
-
+        
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
-        .func { background: #5d4037; font-weight: bold; }
+        .func-btn { background: #5d4037; font-weight: bold; }
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
         .num { background: #444; font-weight: bold; }
 
-        /* Modals Original Style */
+        /* Modals */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000;
-            width: 85%; max-height: 80vh; border: 2px solid #444;
+            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000; 
+            width: 90%; max-height: 80vh; border: 2px solid #444;
         }
         .modal.active { display: flex; flex-direction: column; }
         .modal-content { overflow-y: auto; flex-grow: 1; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
         #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; }
         .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; }
+        .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; cursor: pointer; }
         .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
-        .list-item { padding: 15px; border-bottom: 1px solid #333; color: #00ff00; font-family: monospace; cursor: pointer; }
+        .list-item { 
+            padding: 15px; border-bottom: 1px solid #333; color: #00ff00; 
+            font-family: monospace; cursor: pointer; width: 100%; display: block;
+            text-align: left; background: transparent; border-left: none; border-right: none; border-top: none;
+        }
+        .list-item:active { background: #333; }
     </style>
 </head>
 <body>
@@ -75,7 +80,7 @@
             <button class="op" style="background:#444" onclick="openMath()">Math</button>
             <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
 
-            <button class="func" onclick="openFunc()">Func</button>
+            <button class="func-btn" onclick="openFunc()">Func</button>
             <button onclick="add('ln(')">ln</button>
             <button onclick="add('log(')">log</button>
             <button onclick="add('sqrt(')">sqrt</button>
@@ -85,9 +90,11 @@
         <div id="extra-keys" class="grid" style="margin-top:4px;">
             <button class="hex" onclick="add('A')">A</button><button class="hex" onclick="add('B')">B</button><button class="hex" onclick="add('C')">C</button>
             <button class="num" onclick="add('7')">7</button><button class="num" onclick="add('8')">8</button><button class="num" onclick="add('9')">9</button>
+            
             <button class="hex" onclick="add('D')">D</button><button class="hex" onclick="add('E')">E</button><button class="hex" onclick="add('F')">F</button>
             <button class="num" onclick="add('4')">4</button><button class="num" onclick="add('5')">5</button><button class="num" onclick="add('6')">6</button>
-            <button class="hex" onclick="add('x')">0x</button><button class="num" onclick="add('.')">.</button><button class="num" onclick="add('0')">0</button>
+            
+            <button class="hex" onclick="add('x')">0x</button><button class="hex" onclick="add('0')">0</button><button class="num" onclick="add('.')">.</button>
             <button class="num" onclick="add('1')">1</button><button class="num" onclick="add('2')">2</button><button class="num" onclick="add('3')">3</button>
         </div>
     </div>
@@ -115,7 +122,7 @@
             <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
             <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
             <div class="menu-btn" onclick="triggerImport()">📥 Import</div>
-            <div class="menu-btn" onclick="closeAllModals()">✖ Exit</div>
+            <div class="menu-btn" onclick="closeAllModals()">✖ Zu</div>
         </div>
         <div class="modal-content" id="funcContent"></div>
     </div>
@@ -126,13 +133,13 @@
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
         const delBtn = document.getElementById('backspaceBtn');
-        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'random()'];
+        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'sqrt(', 'random()'];
 
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
 
-        // --- GESTENSTEUERUNG ---
+        // Gestensteuerung
         let touchStartY = 0;
         display.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY, {passive: true});
         display.addEventListener('touchend', e => {
@@ -164,7 +171,6 @@
             if (display.value === "" && lastContent !== "") {
                 display.value = lastContent;
                 lastContent = "";
-                resArea.innerText = "Wiederhergestellt";
                 return;
             }
             backspace();
@@ -172,7 +178,6 @@
                 if (contentBefore !== "") {
                     lastContent = contentBefore;
                     display.value = "";
-                    resArea.innerText = "Geleert (⌫ für Undo)";
                 }
             }, 600);
         };
@@ -185,7 +190,7 @@
                 if(!input.trim()) return;
                 let rawInput = input;
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
-
+                
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
                 let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
@@ -205,7 +210,7 @@
             } catch(e) { resArea.innerText = "Fehler: " + e.message; }
         }
 
-        // --- HISTORY & FUNC (ORIGINAL LOGIK) ---
+        // --- Modals & Content Handling ---
         function addToHistory(q, a) {
             let h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             h.unshift({q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
@@ -217,15 +222,25 @@
         function openHistory() {
             const h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             const cont = document.getElementById('historyContent');
-            cont.innerHTML = h.map(i => `<div class="list-item" onclick="display.value='${i.q}';closeAllModals()"><small>${i.t}</small> ${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b></div>`).join('') || "Kein Verlauf";
+            cont.innerHTML = "";
+            h.forEach(i => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `<small>${i.t}</small> ${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b>`;
+                div.onclick = () => { display.value = i.q; closeAllModals(); };
+                cont.appendChild(div);
+            });
             showModal('historyModal');
         }
 
         function openMath() {
             const grid = document.getElementById('mathGrid'); grid.innerHTML = '';
             mathFuncs.forEach(f => {
-                const b = document.createElement('div'); b.className = 'menu-btn'; b.innerText = f.replace('(', '').replace(')', '');
-                b.onclick = () => { add(f); closeAllModals(); }; grid.appendChild(b);
+                const b = document.createElement('div');
+                b.className = 'menu-btn';
+                b.innerText = f.replace('(', '').replace(')', '');
+                b.onclick = () => { add(f); closeAllModals(); };
+                grid.appendChild(b);
             });
             showModal('mathModal');
         }
@@ -233,14 +248,23 @@
         function openFunc() {
             const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
             const cont = document.getElementById('funcContent');
-            cont.innerHTML = Object.keys(f).sort().map(n => `<div class="list-item" onclick="display.value='${f[n]}';closeAllModals()">${n}</div>`).join('') || "Leer";
+            cont.innerHTML = "";
+            Object.keys(f).sort().forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerText = n;
+                div.onclick = () => { display.value = f[n]; closeAllModals(); };
+                cont.appendChild(div);
+            });
             showModal('funcModal');
         }
 
         function saveCurrent() {
-            const n = prompt("Name für Favorit?"); if(n) {
+            const n = prompt("Name für Favorit?"); 
+            if(n) {
                 const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
-                f[n] = display.value; localStorage.setItem('mySpecs', JSON.stringify(f));
+                f[n] = display.value; 
+                localStorage.setItem('mySpecs', JSON.stringify(f));
                 openFunc();
             }
         }
@@ -261,8 +285,11 @@
         function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
         function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
 
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('mousedown', e => { if(btn.id !== 'backspaceBtn') e.preventDefault(); });
+        // WICHTIG: Selektives preventDefault nur für die Haupt-Buttons, nicht für die Modal-Inhalte
+        document.querySelectorAll('#controls button').forEach(btn => {
+            btn.addEventListener('mousedown', e => { 
+                if(btn.id !== 'backspaceBtn') e.preventDefault(); 
+            });
         });
     </script>
 </body>
