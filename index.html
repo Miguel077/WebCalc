@@ -72,6 +72,47 @@
             <button class="op" onclick="add('*')">*</button>
             <button class="op" onclick="add('/')">/</button>
             <button class="op" onclick="add('=')">=</button>
+            <button class="func-btn" onclick="openFunc()">Func</button>
+
+            <button onclick="add('(')">(</button>
+            <button onclick="add(')')">)</button>
+            <button onclick="add('^')">^</button>
+            <button onclick="add('pi')">pi</button>
+            <button onclick="add('sqrt(')">sqrt</button> <button class="op" style="background:#444" onclick="openMath()">Math</button>
+
+            <button class="hex" onclick="add('A')">A</button>
+            <button class="hex" onclick="add('B')">B</button>
+            <button class="num" onclick="add('7')">7</button>
+            <button class="num" onclick="add('8')">8</button>
+            <button class="num" onclick="add('9')">9</button>
+            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+
+            <button class="hex" onclick="add('C')">C</button>
+            <button class="hex" onclick="add('D')">D</button>
+            <button class="num" onclick="add('4')">4</button>
+            <button class="num" onclick="add('5')">5</button>
+            <button class="num" onclick="add('6')">6</button>
+            <button class="del" id="backspaceBtn">⌫</button>
+
+            <button class="hex" onclick="add('E')">E</button>
+            <button class="hex" onclick="add('F')">F</button>
+            <button class="num" onclick="add('1')">1</button>
+            <button class="num" onclick="add('2')">2</button>
+            <button class="num" onclick="add('3')">3</button>
+            <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↵</button>
+
+            <button class="hex" onclick="add('x')">0x</button>
+            <button onclick="add(' ')">␣</button>
+            <button class="num" onclick="add('.')">.</button>
+            <button class="num" onclick="add('0')">0</button>
+            <button class="equal" style="grid-column: span 2;" onclick="calculate()">Calculate</button>
+</div>
+        <!-- <div class="grid">
+            <button class="op" onclick="add('+')">+</button>
+            <button class="op" onclick="add('-')">-</button>
+            <button class="op" onclick="add('*')">*</button>
+            <button class="op" onclick="add('/')">/</button>
+            <button class="op" onclick="add('=')">=</button>
             <button class="del" id="backspaceBtn">⌫</button>
 
             <button onclick="add('(')">(</button>
@@ -97,7 +138,7 @@
 
             <button class="hex" onclick="add('x')">0x</button><button class="num" onclick="add('.')">.</button><button class="num" onclick="add('0')">0</button>
             <button class="num" onclick="add('1')">1</button><button class="num" onclick="add('2')">2</button><button class="num" onclick="add('3')">3</button>
-        </div>
+        </div> -->
     </div>
 
     <div id="overlay" onclick="closeAllModals()"></div>
@@ -134,7 +175,7 @@
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
         const delBtn = document.getElementById('backspaceBtn');
-        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'ceil(', 'floor(', 'round(', 'abs(', 'exp(', 'random()'];
+        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
 
         let lastContent = "";
         let useDegrees = true;
@@ -166,15 +207,6 @@
                 e.preventDefault(); // Verhindert, dass der Browser die Geste "verschluckt"
             }
         }, {passive: false});
-
-        // // Gestensteuerung
-        // let touchStartY = 0;
-        // display.addEventListener('touchstart', e => touchStartY = e.touches[0].clientY, {passive: true});
-        // display.addEventListener('touchend', e => {
-        //     const diff = touchStartY - e.changedTouches[0].clientY;
-        //     if (diff > 60) { display.inputMode = "text"; display.focus(); }
-        //     else if (diff < -60) { display.inputMode = "none"; display.blur(); }
-        // });
 
         function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
 
@@ -228,7 +260,8 @@
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
                     .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
-                    .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**');
+                    .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
+                    .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
 
                 let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
                     
