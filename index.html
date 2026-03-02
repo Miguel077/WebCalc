@@ -203,9 +203,10 @@
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**');
 
                 let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
-
+                    
                 if(res !== undefined) {
-                    let resStr = res.toLocaleString('de-DE');
+                    let resStr = res.toPrecision(6);
+                    //let resStr = res.toLocaleString('de-DE');
                     resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
