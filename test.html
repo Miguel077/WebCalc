@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>WebCalc Pro</title>
+    <style>
+        :root {
+            --bg-color: #121212; --text-color: #e0e0e0; --btn-bg: #333;
+            --accent-blue: #2c5d87; --accent-green: #27ae60; --accent-red: #c0392b;
+            --accent-gray: #455a64; --hex-btn: #2a2a2a;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Courier New', monospace; margin: 0; padding: 10px;
+            height: 100svh; width: 100vw; display: flex; flex-direction: column; overflow: hidden;
+            touch-action: none; /* Verhindert das Wegschieben der gesamten Seite */
+        }
+        #top-section { display: flex; flex-direction: column; flex: 1; min-height: 60px; gap: 5px; }
+        #display {
+            width: 100%; flex: 1; background: #000; color: #00ff00;
+            border: 1px solid #444; border-radius: 8px; padding: 10px;
+            font-size: 1.1rem; resize: none; outline: none;
+            touch-action: text; /* Erlaubt Cursor-Bewegung trotz globalem touch-action: none */
+        }
+        #result-area {
+            width: 100%; background: #1e1e1e; padding: 8px; border-radius: 8px;
+            border-left: 5px solid var(--accent-blue); font-size: 0.95rem; word-wrap: break-word; flex-shrink: 0; min-height: 45px;
+        }
+        #controls { margin-top: 8px; flex-shrink: 0; width: 100%; padding-bottom: env(safe-area-inset-bottom); }
+        .grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; width: 100%; max-width: 500px; margin: 0 auto; }
+
+        button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
+        .op { color: #3498db; font-weight: bold; }
+        /* Spezifisches Styling für Return-Symbol */
+        button[onclick*="'\\n'"] { font-size: 1.4rem; font-weight: bold; }
+        
+        .func-btn { background: #5d4037; font-weight: bold; }
+        .del { background: var(--accent-red); }
+        .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
+        .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
+        .num { background: #444; font-weight: bold; }
+
+        .modal {
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: #252525; padding: 20px; border-radius: 12px; z-index: 1000;
+            width: 90%; max-height: 80vh; border: 2px solid #444;
+        }
+        .modal.active { display: flex; flex-direction: column; }
+        .modal-content { overflow-y: auto; flex-grow: 1; margin-bottom: 10px; -webkit-overflow-scrolling: touch; }
+        #overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 999; }
+        .menu-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .menu-btn { padding: 12px 5px; background: #444; color: #fff; border-radius: 5px; font-size: 0.85rem; text-align: center; cursor: pointer; }
+        .mode-toggle { padding: 5px 10px; background: var(--accent-blue); color: white; border-radius: 4px; font-size: 0.8rem; float: right; cursor: pointer; }
+        .list-item {
+            padding: 15px; border-bottom: 1px solid #333; color: #00ff00;
+            font-family: monospace; cursor: pointer; width: 100%; display: block;
+            text-align: left; background: transparent; position: relative;
+        }
+        .list-item:active { background: #333; transition: background 0.2s; }
+    </style>
+</head>
+<body>
+
+    <div id="top-section">
+        <textarea id="display" placeholder="Wisch rauf für Tastatur..." inputmode="none" spellcheck="false"></textarea>
+        <div id="result-area">Bereit...</div>
+    </div>
+
+    <div id="controls">
+        <div class="grid">
+            <button class="op" onclick="add('+')">+</button>
+            <button class="op" onclick="add('-')">-</button>
+            <button class="op" onclick="add('*')">*</button>
+            <button class="op" onclick="add('/')">/</button>
+            <button class="op" onclick="add('=')">=</button>
+            <button class="func-btn" onclick="openFunc()">Func</button>
+
+            <button onclick="add('(')">(</button>
+            <button onclick="add(')')">)</button>
+            <button onclick="add('^')">^</button>
+            <button onclick="add('pi')">pi</button>
+            <button onclick="add('sqrt(')">sqrt</button> <button class="op" style="background:#444" onclick="openMath()">Math</button>
+
+            <button class="hex" onclick="add('A')">A</button>
+            <button class="hex" onclick="add('B')">B</button>
+            <button class="num" onclick="add('7')">7</button>
+            <button class="num" onclick="add('8')">8</button>
+            <button class="num" onclick="add('9')">9</button>
+            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+
+            <button class="hex" onclick="add('C')">C</button>
+            <button class="hex" onclick="add('D')">D</button>
+            <button class="num" onclick="add('4')">4</button>
+            <button class="num" onclick="add('5')">5</button>
+            <button class="num" onclick="add('6')">6</button>
+            <button class="del" id="backspaceBtn">⌫</button>
+
+            <button class="hex" onclick="add('E')">E</button>
+            <button class="hex" onclick="add('F')">F</button>
+            <button class="num" onclick="add('1')">1</button>
+            <button class="num" onclick="add('2')">2</button>
+            <button class="num" onclick="add('3')">3</button>
+            <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↲</button>
+
+            <button class="hex" onclick="add('x')">0x</button>
+            <button onclick="add(' ')">␣</button>
+            <button class="num" onclick="add('.')">.</button>
+            <button class="num" onclick="add('0')">0</button>
+            <button class="equal" style="grid-column: span 2;" onclick="calculate()">Calculate</button>
+        </div>
+    </div>
+
+    <div id="overlay" onclick="closeAllModals()"></div>
+
+    <div id="mathModal" class="modal" style="border-color: var(--accent-green);">
+        <div style="margin-bottom: 15px;"><span style="color: var(--accent-green); font-weight:bold;">Math</span><span id="modeDisplay" class="mode-toggle" onclick="toggleDegRad()">Mode: DEG</span></div>
+        <div class="modal-content"><div class="menu-grid" id="mathGrid"></div></div>
+        <button class="menu-btn" style="width:100%; background:var(--accent-red);" onclick="closeAllModals()">Schließen</button>
+    </div>
+
+    <div id="historyModal" class="modal" style="border-color: var(--accent-gray);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <span style="color: var(--accent-gray); font-weight:bold;">History (Longpress to Delete)</span>
+            <button class="mode-toggle" style="background:var(--accent-red)" onclick="clearHistory()">Löschen</button>
+        </div>
+        <div class="modal-content" id="historyContent"></div>
+        <button class="menu-btn" style="width:100%;" onclick="closeAllModals()">Schließen</button>
+    </div>
+
+    <div id="funcModal" class="modal" style="border-color: var(--accent-blue);">
+        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek (Longpress to Delete)</span></div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
+            <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
+            <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
+            <div class="menu-btn" onclick="triggerImport()">📥 Import</div>
+            <div class="menu-btn" onclick="closeAllModals()">✖ Exit</div>
+        </div>
+        <div class="modal-content" id="funcContent"></div>
+    </div>
+
+    <input type="file" id="fileInput" style="display:none" onchange="importFromFile(event)">
+
+    <script>
+        const display = document.getElementById('display');
+        const resArea = document.getElementById('result-area');
+        const delBtn = document.getElementById('backspaceBtn');
+        // Angepasste mathFuncs mit Leerzeichen für and/or/xor
+        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
+
+        let lastContent = "";
+        let useDegrees = true;
+        let bsTimer;
+
+        // --- Optimierte Globale Geste (Dokument-Ebene) ---
+        let touchStartY = 0;
+        document.addEventListener('touchstart', e => {
+            touchStartY = e.touches[0].clientY;
+        }, {passive: true});
+
+        document.addEventListener('touchmove', e => {
+            const touchEndY = e.touches[0].clientY;
+            const diff = touchStartY - touchEndY;
+
+            // Wenn wir nach oben wischen (> 50px)
+            if (diff > 50) {
+                // Nur preventDefault, wenn wir NICHT in einem Modal-Content scrollen wollen
+                if (!e.target.closest('.modal-content')) {
+                    e.preventDefault(); 
+                    // Keyboard triggern
+                    display.inputMode = "text";
+                    display.focus();
+                }
+            } 
+            // Wenn wir nach unten wischen (> 50px)
+            else if (diff < -50) {
+                display.inputMode = "none";
+                display.blur();
+                closeAllModals();
+            }
+        }, {passive: false});
+
+        function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
+
+        function add(v) {
+            const start = display.selectionStart, end = display.selectionEnd;
+            display.setRangeText(v === 'x' ? '0x' : v, start, end, 'end');
+            display.focus();
+        }
+
+        function backspace() {
+            const start = display.selectionStart, end = display.selectionEnd;
+            if (start === end && start > 0) {
+                display.value = display.value.slice(0, start - 1) + display.value.slice(start);
+                display.selectionStart = display.selectionEnd = start - 1;
+            } else if (start !== end) {
+                display.setRangeText('', start, end, 'end');
+            }
+            display.focus();
+        }
+
+        delBtn.onmousedown = delBtn.ontouchstart = (e) => {
+            e.preventDefault();
+            const contentBefore = display.value;
+            if (display.value === "" && lastContent !== "") {
+                display.value = lastContent;
+                lastContent = "";
+                return;
+            }
+            backspace();
+            bsTimer = setTimeout(() => {
+                if (contentBefore !== "") {
+                    lastContent = contentBefore;
+                    display.value = "";
+                }
+            }, 600);
+        };
+        delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
+
+        function calculate() {
+            display.inputMode = "none"; display.blur();
+            try {
+                let input = display.value;
+                if(!input.trim()) return;
+                let rawInput = input;
+
+                // REIHENFOLGE WICHTIG: Erst ^ zu **, dann xor zu ^
+                input = input.replace(/\^/g, '**');
+                input = input.replace(/\band\b/g, '&')
+                             .replace(/\bor\b/g, '|')
+                             .replace(/\bxor\b/g, '^');
+
+                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1')
+                             .replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
+
+                let trigIn = useDegrees ? "(Math.PI/180*" : "(";
+                let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
+                    .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
+                    .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
+                    .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
+                    .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
+                    .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
+                    .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(');
+
+                let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
+                    
+                if(res !== undefined) {
+                    let resStr = res.toPrecision(10).replace(/\.?0+$/, ""); // Sauberere Darstellung
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
+                    addToHistory(rawInput, resStr);
+                }
+            } catch(e) { resArea.innerText = "Fehler: " + e.message; }
+        }
+
+        function addToHistory(q, a) {
+            let h = JSON.parse(localStorage.getItem('calcHist') || '[]');
+            h.unshift({q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
+            localStorage.setItem('calcHist', JSON.stringify(h.slice(0, 50)));
+        }
+
+        function clearHistory() { localStorage.removeItem('calcHist'); openHistory(); }
+
+        function openHistory() {
+            const h = JSON.parse(localStorage.getItem('calcHist') || '[]');
+            const cont = document.getElementById('historyContent');
+            cont.innerHTML = "";
+            h.forEach((i, idx) => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `<small>${i.t}</small> ${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b>`;
+
+                let pressTimer;
+                const start = () => pressTimer = setTimeout(() => {
+                    if(confirm("Eintrag löschen?")) {
+                        let currentH = JSON.parse(localStorage.getItem('calcHist') || '[]');
+                        currentH.splice(idx, 1);
+                        localStorage.setItem('calcHist', JSON.stringify(currentH));
+                        openHistory();
+                    }
+                }, 600);
+                const cancel = () => clearTimeout(pressTimer);
+                div.onmousedown = div.ontouchstart = start;
+                div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
+                div.onclick = () => { display.value = i.q; closeAllModals(); };
+                cont.appendChild(div);
+            });
+            showModal('historyModal');
+        }
+
+        function openMath() {
+            const grid = document.getElementById('mathGrid'); grid.innerHTML = '';
+            mathFuncs.forEach(f => {
+                const b = document.createElement('div');
+                b.className = 'menu-btn';
+                b.innerText = f.trim().replace('(', '');
+                b.onclick = () => { add(f); closeAllModals(); };
+                grid.appendChild(b);
+            });
+            showModal('mathModal');
+        }
+
+        function openFunc() {
+            const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+            const cont = document.getElementById('funcContent');
+            cont.innerHTML = "";
+            Object.keys(f).sort().forEach(n => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerText = n;
+                let pressTimer;
+                const start = () => pressTimer = setTimeout(() => {
+                    if(confirm(`'${n}' löschen?`)) {
+                        const currentF = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+                        delete currentF[n];
+                        localStorage.setItem('mySpecs', JSON.stringify(currentF));
+                        openFunc();
+                    }
+                }, 600);
+                const cancel = () => clearTimeout(pressTimer);
+                div.onmousedown = div.ontouchstart = start;
+                div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
+                div.onclick = () => { display.value = f[n]; closeAllModals(); };
+                cont.appendChild(div);
+            });
+            showModal('funcModal');
+        }
+
+        function saveCurrent() {
+            const n = prompt("Name für Favorit?");
+            if(n) {
+                const f = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+                f[n] = display.value;
+                localStorage.setItem('mySpecs', JSON.stringify(f));
+                openFunc();
+            }
+        }
+
+        function triggerImport() { document.getElementById('fileInput').click(); }
+        function exportToFile() {
+            const data = localStorage.getItem('mySpecs') || '{}';
+            const blob = new Blob([data], {type: 'application/json'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'calc_library.json';
+            a.click();
+        }
+        function importFromFile(e) {
+            const reader = new FileReader();
+            reader.onload = (ev) => { localStorage.setItem('mySpecs', ev.target.result); openFunc(); };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        function showModal(id) { document.getElementById(id).classList.add('active'); document.getElementById('overlay').style.display = 'block'; }
+        function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
+        function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
+
+        document.querySelectorAll('#controls button').forEach(btn => {
+            btn.addEventListener('mousedown', e => { if(btn.id !== 'backspaceBtn') e.preventDefault(); });
+        });
+    </script>
+</body>
+</html>
