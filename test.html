@@ -162,22 +162,17 @@
         document.addEventListener('touchmove', e => {
             const touchEndY = e.touches[0].clientY;
             const diff = touchStartY - touchEndY;
-
-            // Wenn wir nach oben wischen (> 50px)
-            if (diff > 50) {
-                // Nur preventDefault, wenn wir NICHT in einem Modal-Content scrollen wollen
+        
+            if (Math.abs(diff) > 60) { // Schwelle etwas höher für Stabilität
                 if (!e.target.closest('.modal-content')) {
-                    e.preventDefault(); 
-                    // Keyboard triggern
-                    display.inputMode = "text";
-                    display.focus();
+                    if (diff > 0) { 
+                        openMath(); // Wisch rauf öffnet jetzt das Math-Menü
+                    } else { 
+                        closeAllModals(); 
+                        display.blur();
+                    }
+                    e.preventDefault();
                 }
-            } 
-            // Wenn wir nach unten wischen (> 50px)
-            else if (diff < -50) {
-                display.inputMode = "none";
-                display.blur();
-                closeAllModals();
             }
         }, {passive: false});
 
@@ -185,7 +180,14 @@
 
         function add(v) {
             const start = display.selectionStart, end = display.selectionEnd;
-            display.setRangeText(v === 'x' ? '0x' : v, start, end, 'end');
+            const textToInsert = v === 'x' ? '0x' : v;
+            
+            display.setRangeText(textToInsert, start, end, 'end');
+            
+            // Wichtig: Fokus behalten, aber Keyboard nicht erzwingen, 
+            // wenn man gerade nur über die Buttons tippt
+            const newPos = start + textToInsert.length;
+            display.setSelectionRange(newPos, newPos);
             display.focus();
         }
 
