@@ -99,46 +99,14 @@
             <button class="num" onclick="add('1')">1</button>
             <button class="num" onclick="add('2')">2</button>
             <button class="num" onclick="add('3')">3</button>
-            <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↵</button>
+            <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↲</button>
 
             <button class="hex" onclick="add('x')">0x</button>
             <button onclick="add(' ')">␣</button>
             <button class="num" onclick="add('.')">.</button>
             <button class="num" onclick="add('0')">0</button>
             <button class="equal" style="grid-column: span 2;" onclick="calculate()">Calculate</button>
-</div>
-        <!-- <div class="grid">
-            <button class="op" onclick="add('+')">+</button>
-            <button class="op" onclick="add('-')">-</button>
-            <button class="op" onclick="add('*')">*</button>
-            <button class="op" onclick="add('/')">/</button>
-            <button class="op" onclick="add('=')">=</button>
-            <button class="del" id="backspaceBtn">⌫</button>
-
-            <button onclick="add('(')">(</button>
-            <button onclick="add(')')">)</button>
-            <button onclick="add('^')">^</button>
-            <button onclick="add('pi')">pi</button>
-            <button class="op" style="background:#444" onclick="openMath()">Math</button>
-            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
-
-            <button class="func-btn" onclick="openFunc()">Func</button>
-            <button onclick="add('ln(')">ln</button>
-            <button onclick="add('log(')">log</button>
-            <button onclick="add('sqrt(')">sqrt</button>
-            <button class="equal" onclick="calculate()">BERECHNEN</button>
         </div>
-
-        <div id="extra-keys" class="grid" style="margin-top:4px;">
-            <button class="hex" onclick="add('A')">A</button><button class="hex" onclick="add('B')">B</button><button class="hex" onclick="add('C')">C</button>
-            <button class="num" onclick="add('7')">7</button><button class="num" onclick="add('8')">8</button><button class="num" onclick="add('9')">9</button>
-
-            <button class="hex" onclick="add('D')">D</button><button class="hex" onclick="add('E')">E</button><button class="hex" onclick="add('F')">F</button>
-            <button class="num" onclick="add('4')">4</button><button class="num" onclick="add('5')">5</button><button class="num" onclick="add('6')">6</button>
-
-            <button class="hex" onclick="add('x')">0x</button><button class="num" onclick="add('.')">.</button><button class="num" onclick="add('0')">0</button>
-            <button class="num" onclick="add('1')">1</button><button class="num" onclick="add('2')">2</button><button class="num" onclick="add('3')">3</button>
-        </div> -->
     </div>
 
     <div id="overlay" onclick="closeAllModals()"></div>
@@ -151,7 +119,7 @@
 
     <div id="historyModal" class="modal" style="border-color: var(--accent-gray);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <span style="color: var(--accent-gray); font-weight:bold;">History</span>
+            <span style="color: var(--accent-gray); font-weight:bold;">History / Longpress to delete Entry</span>
             <button class="mode-toggle" style="background:var(--accent-red)" onclick="clearHistory()">Löschen</button>
         </div>
         <div class="modal-content" id="historyContent"></div>
@@ -159,7 +127,7 @@
     </div>
 
     <div id="funcModal" class="modal" style="border-color: var(--accent-blue);">
-        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek</span></div>
+        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek / Longpress to delete Entry</span></div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
             <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
             <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
@@ -287,11 +255,31 @@
             const h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             const cont = document.getElementById('historyContent');
             cont.innerHTML = "";
-            h.forEach(i => {
+            h.forEach((i, idx) => {
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerHTML = `<small>${i.t}</small> ${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b>`;
-                div.onclick = () => { display.value = i.q; closeAllModals(); };
+
+                let pressTimer;
+                const start = (e) => {
+                    pressTimer = setTimeout(() => {
+                        if(confirm("Eintrag löschen?")) {
+                            let currentH = JSON.parse(localStorage.getItem('calcHist') || '[]');
+                            currentH.splice(idx, 1);
+                            localStorage.setItem('calcHist', JSON.stringify(currentH));
+                            openHistory();
+                        }
+                    }, 600);
+                };
+                const cancel = () => clearTimeout(pressTimer);
+            
+                div.onmousedown = div.ontouchstart = start;
+                div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
+
+                div.onclick = () => { 
+                    display.value = i.q; 
+                    closeAllModals(); 
+                };
                 cont.appendChild(div);
             });
             showModal('historyModal');
@@ -317,9 +305,36 @@
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerText = n;
-                div.onclick = () => { display.value = f[n]; closeAllModals(); };
+                        
+                let pressTimer;
+                const start = (e) => {
+                    pressTimer = setTimeout(() => {
+                        if(confirm(`'${n}' wirklich löschen?`)) {
+                            const currentF = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+                            delete currentF[n];
+                            localStorage.setItem('mySpecs', JSON.stringify(currentF));
+                            openFunc();
+                        }
+                    }, 600);
+                };
+                const cancel = () => clearTimeout(pressTimer);
+            
+                div.onmousedown = div.ontouchstart = start;
+                div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
+            
+                div.onclick = () => { 
+                    display.value = f[n]; 
+                    closeAllModals(); 
+                };
                 cont.appendChild(div);
             });
+            // Object.keys(f).sort().forEach(n => {
+            //     const div = document.createElement('div');
+            //     div.className = 'list-item';
+            //     div.innerText = n;
+            //     div.onclick = () => { display.value = f[n]; closeAllModals(); };
+            //     cont.appendChild(div);
+            // });
             showModal('funcModal');
         }
 
