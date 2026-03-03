@@ -178,44 +178,56 @@
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
-
+        // 1. Klick-Verhalten: Fokus setzen, aber Tastatur blockieren
+        display.addEventListener('click', (e) => {
+            display.inputMode = "none"; 
+            display.focus(); // Setzt den Cursor an die getippte Stelle
+        });
         // --- Optimierte Globale Geste (Dokument-Ebene) ---
         let touchStartY = 0;
         document.addEventListener('touchstart', e => {
             touchStartY = e.touches[0].clientY;
         }, {passive: true});
 
-        document.addEventListener('touchmove', e => {
-            const touchEndY = e.touches[0].clientY;
+        document.addEventListener('touchend', e => {
+            const touchEndY = e.changedTouches[0].clientY;
             const diff = touchStartY - touchEndY;
         
-            if (Math.abs(diff) > 60) { // Schwelle etwas höher für Stabilität
-                if (!e.target.closest('.modal-content')) {
-                    if (diff > 0) { 
-                        openMath(); // Wisch rauf öffnet jetzt das Math-Menü
-                    } else { 
-                        closeAllModals(); 
-                        display.blur();
-                    }
+            if (diff > 60) { // Wisch nach oben
+                // Falls wir auf dem Display oder im freien Bereich wischen
+                if (!e.target.closest('.modal')) {
+                    display.inputMode = "text"; // Tastatur-Modus aktivieren
+                    display.focus(); 
                     e.preventDefault();
                 }
+            } 
+            else if (diff < -60) { // Wisch nach unten
+                display.inputMode = "none";
+                display.blur(); // Tastatur einfahren
+                closeAllModals();
             }
         }, {passive: false});
-
+        
         function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
 
         function add(v) {
             const start = display.selectionStart, end = display.selectionEnd;
             const textToInsert = v === 'x' ? '0x' : v;
+
+            // Aktuellen Modus kurz merken
+            const prevMode = display.inputMode;
+
+            // Da wir über eigene Buttons tippen, verhindern wir das Aufpoppen
+            display.inputMode = "none"; 
+
             display.setRangeText(textToInsert, start, end, 'end');
-            
-            // Cursor-Position bewahren
             const newPos = start + textToInsert.length;
             display.setSelectionRange(newPos, newPos);
-            
-            // WICHTIG: Kein automatischer Fokus hier, wenn du nur die 
-            // eigenen Tasten benutzt, sonst poppt die Tastatur ständig auf.
-            // display.focus(); // Nur aktivieren, wenn du das Keyboard erzwingen willst
+
+            display.focus();
+
+            // Modus wiederherstellen (falls der User vorher die Tastatur mit Wischen aktiviert hatte)
+            display.inputMode = prevMode;
         }
 
         function backspace() {
