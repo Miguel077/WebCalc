@@ -12,29 +12,24 @@
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
-            background-color: var(--bg-color); color: var(--text-color);
-            font-family: 'Courier New', monospace; margin: 0; padding: 10px;
-            height: 100vh; width: 100vw; 
-            display: flex; flex-direction: column; 
-            overflow: hidden; 
-            position: fixed; /* Fixiert die gesamte App gegen Browser-Scrolling */
+            position: fixed; /* Hält den Rahmen starr */
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
         }
-
+        
         #top-section {
             position: absolute;
             top: 10px; left: 10px; right: 10px;
-            bottom: 340px; /* Dieser Wert muss Platz für das #controls Grid lassen */
-            display: flex; flex-direction: column; gap: 5px;
+            bottom: 340px; /* Platz für die Tastatur unten */
+            z-index: 1;
         }
-
+        
         #controls {
             position: absolute;
-            bottom: env(safe-area-inset-bottom, 10px); 
+            bottom: env(safe-area-inset-bottom, 10px);
             left: 0; right: 0;
-            height: 320px; /* Feste Höhe, damit die Tastatur sie einfach überlagert */
-            padding: 10px;
-            background: var(--bg-color);
-            z-index: 5; /* Bleibt unter den Modals, aber über dem Background */
+            z-index: 2; /* Liegt unter der Tastatur, wenn diese aufpoppt */
         }
 
         #display {
@@ -207,7 +202,7 @@
                 closeAllModals();
             }
         }, {passive: false});
-        
+
         function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
 
         function add(v) {
