@@ -161,18 +161,16 @@
             const diff = touchStartY - touchEndY;
 
             if (Math.abs(diff) > 30) { // Schwelle auf 30px gesenkt für schnellere Reaktion
+                e.preventDefault();
                 if (diff > 0) { // Wisch nach oben
-                    display.inputMode = "none";
+                    // display.inputMode = "none";
                     display.blur();
-                    e.preventDefault();
-                    display.inputMode = "text";
+                    // display.inputMode = "text";
                     display.focus();
                 } else { // Wisch nach unten
-                    e.preventDefault();
-                    display.inputMode = "none";
+                    // display.inputMode = "none";
                     display.blur();
                 }
-                // e.preventDefault(); // Verhindert, dass der Browser die Geste "verschluckt"
             }
         }, {passive: false});
 
