@@ -163,13 +163,13 @@
             if (Math.abs(diff) > 30) { // Schwelle auf 30px gesenkt für schnellere Reaktion
                 e.preventDefault();
                 if (diff > 0) { // Wisch nach oben
-                    // display.inputMode = "none";
-                    display.blur();
-                    // display.inputMode = "text";
-                    display.focus();
+                    display.inputMode = "none";
+                    // display.blur();
+                    display.inputMode = "text";
+                    // display.focus();
                 } else { // Wisch nach unten
-                    // display.inputMode = "none";
-                    display.blur();
+                    display.inputMode = "none";
+                    // display.blur();
                 }
             }
         }, {passive: false});
