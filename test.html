@@ -12,31 +12,16 @@
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
-            position: fixed; /* Hält den Rahmen starr */
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
+            background-color: var(--bg-color); color: var(--text-color);
+            font-family: 'Courier New', monospace; margin: 0; padding: 10px;
+            height: 100svh; width: 100vw; display: flex; flex-direction: column; overflow: hidden;
         }
-        
-        #top-section {
-            position: absolute;
-            top: 10px; left: 10px; right: 10px;
-            bottom: 340px; /* Platz für die Tastatur unten */
-            z-index: 1;
-        }
-        
-        #controls {
-            position: absolute;
-            bottom: env(safe-area-inset-bottom, 10px);
-            left: 0; right: 0;
-            z-index: 2; /* Liegt unter der Tastatur, wenn diese aufpoppt */
-        }
-
+        #top-section { display: flex; flex-direction: column; flex: 1; min-height: 60px; gap: 5px; }
         #display {
             width: 100%; flex: 1; background: #000; color: #00ff00;
             border: 1px solid #444; border-radius: 8px; padding: 10px;
             font-size: 1.1rem; resize: none; outline: none;
-            touch-action: pan-y !important; /* Erlaubt Scrollen im Text, wenn Tastatur da ist */
+            touch-action: none; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
         }
         #result-area {
             width: 100%; background: #1e1e1e; padding: 8px; border-radius: 8px;
@@ -47,15 +32,13 @@
 
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
-        /* Spezifisches Styling für Return-Symbol */
-        button[onclick*="'\\n'"] { font-size: 1.4rem; font-weight: bold; }
-        
         .func-btn { background: #5d4037; font-weight: bold; }
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
         .num { background: #444; font-weight: bold; }
 
+        /* Modals */
         .modal {
             display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
             background: #252525; padding: 20px; border-radius: 12px; z-index: 1000;
@@ -70,9 +53,9 @@
         .list-item {
             padding: 15px; border-bottom: 1px solid #333; color: #00ff00;
             font-family: monospace; cursor: pointer; width: 100%; display: block;
-            text-align: left; background: transparent; position: relative;
+            text-align: left; background: transparent; border-left: none; border-right: none; border-top: none;
         }
-        .list-item:active { background: #333; transition: background 0.2s; }
+        .list-item:active { background: #333; }
     </style>
 </head>
 <body>
@@ -136,7 +119,7 @@
 
     <div id="historyModal" class="modal" style="border-color: var(--accent-gray);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-            <span style="color: var(--accent-gray); font-weight:bold;">History (Longpress to Delete)</span>
+            <span style="color: var(--accent-gray); font-weight:bold;">History / Longpress to delete Entry</span>
             <button class="mode-toggle" style="background:var(--accent-red)" onclick="clearHistory()">Löschen</button>
         </div>
         <div class="modal-content" id="historyContent"></div>
@@ -144,7 +127,7 @@
     </div>
 
     <div id="funcModal" class="modal" style="border-color: var(--accent-blue);">
-        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek (Longpress to Delete)</span></div>
+        <div style="margin-bottom:15px;"><span style="color: var(--accent-blue); font-weight:bold;">Bibliothek / Longpress to delete Entry</span></div>
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:15px;">
             <div class="menu-btn" onclick="saveCurrent()">💾 Save</div>
             <div class="menu-btn" onclick="exportToFile()">📤 Export</div>
@@ -157,49 +140,37 @@
     <input type="file" id="fileInput" style="display:none" onchange="importFromFile(event)">
 
     <script>
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', () => {
-            // Wir ignorieren die Verkleinerung des Viewports einfach
-            // Die Buttons bleiben durch position: absolute unten "kleben"
-            // und werden von der Tastatur überdeckt.
-        });
-}
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
         const delBtn = document.getElementById('backspaceBtn');
-        // Angepasste mathFuncs mit Leerzeichen für and/or/xor
         const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
 
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
-        // 1. Klick-Verhalten: Fokus setzen, aber Tastatur blockieren
-        display.addEventListener('click', (e) => {
-            display.inputMode = "none"; 
-            display.focus(); // Setzt den Cursor an die getippte Stelle
-        });
-        // --- Optimierte Globale Geste (Dokument-Ebene) ---
+
+
+        // Optimierte Gestensteuerung (global, auch mit fokussiertem Fenster)
         let touchStartY = 0;
         document.addEventListener('touchstart', e => {
             touchStartY = e.touches[0].clientY;
-        }, {passive: true});
+        }, {passive: false}); // passive: false erlaubt uns preventDefault()
 
         document.addEventListener('touchend', e => {
             const touchEndY = e.changedTouches[0].clientY;
             const diff = touchStartY - touchEndY;
-        
-            if (diff > 60) { // Wisch nach oben
-                // Falls wir auf dem Display oder im freien Bereich wischen
-                if (!e.target.closest('.modal')) {
-                    display.inputMode = "text"; // Tastatur-Modus aktivieren
-                    display.focus(); 
-                    e.preventDefault();
+
+            if (Math.abs(diff) > 30) { // Schwelle auf 30px gesenkt für schnellere Reaktion
+                if (diff > 0) { // Wisch nach oben
+                    // display.inputMode = "none";
+                    display.blur();
+                    // display.inputMode = "text";
+                    display.focus();
+                } else { // Wisch nach unten
+                    display.inputMode = "none";
+                    display.blur();
                 }
-            } 
-            else if (diff < -60) { // Wisch nach unten
-                display.inputMode = "none";
-                display.blur(); // Tastatur einfahren
-                closeAllModals();
+                e.preventDefault(); // Verhindert, dass der Browser die Geste "verschluckt"
             }
         }, {passive: false});
 
@@ -207,22 +178,8 @@
 
         function add(v) {
             const start = display.selectionStart, end = display.selectionEnd;
-            const textToInsert = v === 'x' ? '0x' : v;
-
-            // Aktuellen Modus kurz merken
-            const prevMode = display.inputMode;
-
-            // Da wir über eigene Buttons tippen, verhindern wir das Aufpoppen
-            display.inputMode = "none"; 
-
-            display.setRangeText(textToInsert, start, end, 'end');
-            const newPos = start + textToInsert.length;
-            display.setSelectionRange(newPos, newPos);
-
+            display.setRangeText(v === 'x' ? '0x' : v, start, end, 'end');
             display.focus();
-
-            // Modus wiederherstellen (falls der User vorher die Tastatur mit Wischen aktiviert hatte)
-            display.inputMode = prevMode;
         }
 
         function backspace() {
@@ -260,15 +217,7 @@
                 let input = display.value;
                 if(!input.trim()) return;
                 let rawInput = input;
-
-                // REIHENFOLGE WICHTIG: Erst ^ zu **, dann xor zu ^
-                input = input.replace(/\^/g, '**');
-                input = input.replace(/\band\b/g, '&')
-                             .replace(/\bor\b/g, '|')
-                             .replace(/\bxor\b/g, '^');
-
-                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1')
-                             .replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
+                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
                 let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
@@ -277,18 +226,21 @@
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
                     .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
-                    .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(');
+                    .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
+                    .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
 
                 let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
                     
                 if(res !== undefined) {
-                    let resStr = res.toPrecision(10).replace(/\.?0+$/, ""); // Sauberere Darstellung
+                    let resStr = res.toPrecision(10);
+                    //let resStr = res.toLocaleString('de-DE');
                     resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
             } catch(e) { resArea.innerText = "Fehler: " + e.message; }
         }
 
+        // --- Modals & Content Handling ---
         function addToHistory(q, a) {
             let h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             h.unshift({q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
@@ -307,18 +259,25 @@
                 div.innerHTML = `<small>${i.t}</small> ${i.q}<br><b style="color:var(--accent-green)">= ${i.a}</b>`;
 
                 let pressTimer;
-                const start = () => pressTimer = setTimeout(() => {
-                    if(confirm("Eintrag löschen?")) {
-                        let currentH = JSON.parse(localStorage.getItem('calcHist') || '[]');
-                        currentH.splice(idx, 1);
-                        localStorage.setItem('calcHist', JSON.stringify(currentH));
-                        openHistory();
-                    }
-                }, 600);
+                const start = (e) => {
+                    pressTimer = setTimeout(() => {
+                        if(confirm("Eintrag löschen?")) {
+                            let currentH = JSON.parse(localStorage.getItem('calcHist') || '[]');
+                            currentH.splice(idx, 1);
+                            localStorage.setItem('calcHist', JSON.stringify(currentH));
+                            openHistory();
+                        }
+                    }, 600);
+                };
                 const cancel = () => clearTimeout(pressTimer);
+            
                 div.onmousedown = div.ontouchstart = start;
                 div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
-                div.onclick = () => { display.value = i.q; closeAllModals(); };
+
+                div.onclick = () => { 
+                    display.value = i.q; 
+                    closeAllModals(); 
+                };
                 cont.appendChild(div);
             });
             showModal('historyModal');
@@ -329,7 +288,7 @@
             mathFuncs.forEach(f => {
                 const b = document.createElement('div');
                 b.className = 'menu-btn';
-                b.innerText = f.trim().replace('(', '');
+                b.innerText = f.replace('(', '').replace(')', '');
                 b.onclick = () => { add(f); closeAllModals(); };
                 grid.appendChild(b);
             });
@@ -344,19 +303,27 @@
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerText = n;
+                        
                 let pressTimer;
-                const start = () => pressTimer = setTimeout(() => {
-                    if(confirm(`'${n}' löschen?`)) {
-                        const currentF = JSON.parse(localStorage.getItem('mySpecs') || '{}');
-                        delete currentF[n];
-                        localStorage.setItem('mySpecs', JSON.stringify(currentF));
-                        openFunc();
-                    }
-                }, 600);
+                const start = (e) => {
+                    pressTimer = setTimeout(() => {
+                        if(confirm(`'${n}' wirklich löschen?`)) {
+                            const currentF = JSON.parse(localStorage.getItem('mySpecs') || '{}');
+                            delete currentF[n];
+                            localStorage.setItem('mySpecs', JSON.stringify(currentF));
+                            openFunc();
+                        }
+                    }, 600);
+                };
                 const cancel = () => clearTimeout(pressTimer);
+            
                 div.onmousedown = div.ontouchstart = start;
                 div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
-                div.onclick = () => { display.value = f[n]; closeAllModals(); };
+            
+                div.onclick = () => { 
+                    display.value = f[n]; 
+                    closeAllModals(); 
+                };
                 cont.appendChild(div);
             });
             showModal('funcModal');
@@ -373,13 +340,20 @@
         }
 
         function triggerImport() { document.getElementById('fileInput').click(); }
+
         function exportToFile() {
             const data = localStorage.getItem('mySpecs') || '{}';
+            const n = prompt("Dateiname für Export?", "calc_library.json");
+            if (!n) return; // Abbrechen, falls kein Name eingegeben wurde
+
             const blob = new Blob([data], {type: 'application/json'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'calc_library.json';
+            a.download = n.endsWith('.json') ? n : n + '.json';
+            document.body.appendChild(a); // Notwendig für einige Browser
             a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
         }
         function importFromFile(e) {
             const reader = new FileReader();
@@ -392,7 +366,9 @@
         function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
 
         document.querySelectorAll('#controls button').forEach(btn => {
-            btn.addEventListener('mousedown', e => { if(btn.id !== 'backspaceBtn') e.preventDefault(); });
+            btn.addEventListener('mousedown', e => {
+                if(btn.id !== 'backspaceBtn') e.preventDefault();
+            });
         });
     </script>
 </body>
