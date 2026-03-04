@@ -161,20 +161,16 @@
             const diff = touchStartY - touchEndY;
 
             if (Math.abs(diff) > 30) { // Schwelle auf 30px gesenkt für schnellere Reaktion
+                e.preventDefault();
                 if (diff > 0) { // Wisch nach oben
                     display.inputMode = "none";
                     display.blur();
                     display.inputMode = "text";
                     display.focus();
-                    // Kleiner Trick: Cursor ans Ende setzen erzwingt das Aufpoppen
-                    //const val = display.value;
-                    //display.value = '';
-                    //display.value = val;
                 } else { // Wisch nach unten
                     display.inputMode = "none";
-                    display.blur();
+                    // display.blur();
                 }
-                e.preventDefault(); // Verhindert, dass der Browser die Geste "verschluckt"
             }
         }, {passive: false});
 
