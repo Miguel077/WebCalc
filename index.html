@@ -221,7 +221,7 @@
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
-                let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
+                let code = input..replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')               
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
                     .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
