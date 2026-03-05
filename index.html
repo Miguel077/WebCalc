@@ -366,10 +366,19 @@
         function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
         function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
 
+        // document.querySelectorAll('#controls button').forEach(btn => {
+        //     btn.addEventListener('mousedown', e => {
+        //         if(btn.id !== 'backspaceBtn') e.preventDefault();
+        //     });
+        // });
         document.querySelectorAll('#controls button').forEach(btn => {
-            btn.addEventListener('mousedown', e => {
-                if(btn.id !== 'backspaceBtn') e.preventDefault();
-            });
+            // Verhindert, dass das Display den Fokus verliert, wenn man einen Button drückt
+            btn.addEventListener('touchstart', e => {
+                if (document.activeElement === display) {
+                    e.preventDefault(); // Verhindert Fokusverlust
+                    btn.click();        // Löst den onclick-Handler manuell aus
+                }
+            }, {passive: false});
         });
     </script>
 </body>
