@@ -366,30 +366,30 @@
         function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.classList.remove('active')); document.getElementById('overlay').style.display = 'none'; }
         function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
 
-        document.querySelectorAll('#controls button').forEach(btn => {
-            // Verhindert, dass das Display den Fokus verliert, wenn man einen Button drückt
-            btn.addEventListener('touchstart', e => {
-                if (btn.id === 'backspaceBtn') return;
-                if (document.activeElement === display) {
-                    e.preventDefault(); // Verhindert Fokusverlust
-                    btn.click();        // Löst den onclick-Handler manuell aus
-                } else display.focus();
-            }, {passive: false});
-        });
+        // document.querySelectorAll('#controls button').forEach(btn => {
+        //     // Verhindert, dass das Display den Fokus verliert, wenn man einen Button drückt
+        //     btn.addEventListener('touchstart', e => {
+        //         if (btn.id === 'backspaceBtn') return;
+        //         if (document.activeElement === display) {
+        //             e.preventDefault(); // Verhindert Fokusverlust
+        //             btn.click();        // Löst den onclick-Handler manuell aus
+        //         } else display.focus();
+        //     }, {passive: false});
+        // });
 
         document.querySelectorAll('#controls button').forEach(btn => {
             btn.addEventListener('touchstart', e => {
                 // Wir lassen Backspace komplett in Ruhe, damit sein eigener 
                 // ontouchstart-Timer (delBtn.ontouchstart) ohne Störung läuft.
                 if (btn.id === 'backspaceBtn') return;
-                
+
                 e.preventDefault(); 
-                
+
                 // Wir rufen die Logik DIREKT auf, ohne den Browser-Umweg
                 if (typeof btn.onclick === 'function') {
                     btn.onclick();
                 }
-            
+
                 // Fokus sichern, damit der Cursor blinkt
                 if (document.activeElement !== display) {
                     display.focus();
