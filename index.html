@@ -59,6 +59,27 @@
             text-align: left; background: transparent; border-left: none; border-right: none; border-top: none;
         }
         .list-item:active { background: #333; }
+        /* Das schwebende Variablen-Popup */
+        #var-popup {
+            position: fixed;
+            background: #2c3e50;
+            color: #00ff00;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            z-index: 9999;
+            display: none;
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            border: 1px solid var(--accent-blue);
+            transition: opacity 0.2s;
+        }
+        #var-popup::after {
+            content: ''; position: absolute; top: 100%; left: 50%;
+            transform: translateX(-50%); border-width: 6px; border-style: solid;
+            border-color: #2c3e50 transparent transparent transparent;
+        }
     </style>
 </head>
 <body>
@@ -66,6 +87,9 @@
     <div id="top-section">
         <textarea id="display" placeholder="Wisch rauf für Tastatur..." inputmode="none" spellcheck="false"></textarea>
         <div id="result-area">Bereit...</div>
+        <div id="debug-storage" style="margin-top: 5px; font-size: 0.75rem; color: #888; font-family: monospace; background: #151515; padding: 5px; border-radius: 5px; display: none;">
+    <b>Speicher:</b> <span id="storage-list">leer</span>
+</div>
     </div>
 
     <div id="controls">
@@ -153,8 +177,16 @@
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
+        let varStorage = {};
         const clearBtn = document.getElementById('clearBtn');
-
+        // Erstelle das Popup-Element dynamisch, falls nicht im HTML vorhanden
+        const popup = document.createElement('div');
+        Object.assign(popup.style, {
+            position: 'fixed', display: 'none', background: '#333', color: '#00ff00',
+            padding: '10px', borderRadius: '8px', border: '1px solid #444',
+            zIndex: '10000', fontFamily: 'monospace', boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+        });
+        document.body.appendChild(popup);
 
         // Optimierte Gestensteuerung (global, auch mit fokussiertem Fenster)
         let touchStartY = 0;
@@ -208,6 +240,8 @@
                 display.value = "";
                 resArea.innerText = "Display & Speicher geleert";
             }
+
+            varStorage = {}; 
           
             bsTimer = setTimeout(() => {
                 if (display.value === "" && lastContent !== "") {
@@ -228,7 +262,7 @@
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
-                let code = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')               
+                let processedCode = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
                     .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
@@ -237,15 +271,48 @@
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
                     .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
 
-                let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
+                // 2. Zeilenweise Verarbeitung für Variablen
+                let lines = processedCode.split('\n');
+                let finalResult;
+
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line) return;
+
+                    // Bestehende Variablen für diese Zeile verfügbar machen
+                    let contextPrefix = "";
+                    for (let v in varStorage) {
+                        contextPrefix += `let ${v} = varStorage['${v}']; `;
+                    }
+
+                    if (line.includes('=') && !line.match(/==|!=|<=|>=/)) {
+                        // Es ist eine Zuweisung (z.B. a = 5)
+                        let parts = line.split('=');
+                        let varName = parts[0].trim();
+                        let expression = parts.slice(1).join('=');
+                        
+                        // Berechne den Wert der rechten Seite im aktuellen Kontext
+                        let val = eval(contextPrefix + expression);
+                        varStorage[varName] = val; // Speichern im globalen varStorage
+                        finalResult = val;
+                    } else {
+                        // Es ist eine normale Rechnung (z.B. a * 5)
+                        finalResult = eval(contextPrefix + line);
+                    }
+                });
+
+                // 3. Ergebnis anzeigen
+                if(finalResult !== undefined) {
+                    let resStr = (typeof finalResult === 'number') ? 
+                        (Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10)) : finalResult;
                     
-                if(res !== undefined) {
-                    let resStr = res.toPrecision(10);
-                    //let resStr = res.toLocaleString('de-DE');
-                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + 
+                        (Number.isInteger(finalResult) ? " <br><small>Hex: 0x" + finalResult.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
-            } catch(e) { resArea.innerText = "Fehler: " + e.message; }
+            } catch(e) { 
+                resArea.innerText = "Fehler: " + e.message; 
+            }
         }
 
         // --- Modals & Content Handling ---
@@ -319,7 +386,7 @@
                             const currentF = JSON.parse(localStorage.getItem('mySpecs') || '{}');
                             delete currentF[n];
                             localStorage.setItem('mySpecs', JSON.stringify(currentF));
-                            // openFunc();
+                            openFunc();
                         }
                     }, 600);
                 };
@@ -389,6 +456,34 @@
                 }
             }, {passive: false});
         });
+
+        display.onclick = (e) => {
+            const text = display.value;
+            const pos = display.selectionStart;
+            
+            // Wort unter dem Cursor extrahieren
+            const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
+                        (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
+
+            if (word && varStorage[word] !== undefined) {
+                const val = varStorage[word];
+                const isInt = Number.isInteger(val);
+
+                // Inhalt setzen: Name = Wert (und Hex, falls Integer)
+                popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
+                
+                popup.style.display = 'block';
+
+                // Position direkt beim Klick (mit kleinem Versatz nach oben)
+                popup.style.left = (e.clientX + 10) + 'px';
+                popup.style.top = (e.clientY - 40) + 'px';
+
+                // Nach 2 Sekunden ausblenden
+                setTimeout(() => popup.style.display = 'none', 2000);
+            }
+        };
+
     </script>
+    <div id="var-popup"></div>
 </body>
 </html>

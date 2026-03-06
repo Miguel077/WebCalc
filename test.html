@@ -177,7 +177,6 @@
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
-        let popupTimer;
         let varStorage = {};
         const clearBtn = document.getElementById('clearBtn');
         // Erstelle das Popup-Element dynamisch, falls nicht im HTML vorhanden
@@ -242,7 +241,6 @@
                 resArea.innerText = "Display & Speicher geleert";
             }
 
-            // Radikaler Reset des Rechner-Speichers:
             varStorage = {}; 
 
             bsTimer = setTimeout(() => {
@@ -261,8 +259,6 @@
                 let input = display.value.trim();
                 if(!input) return;
                 let rawInput = input;
-
-                // 1. Mathematische Ersetzungen (wie bisher)
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
@@ -446,7 +442,7 @@
         document.querySelectorAll('#controls button').forEach(btn => {
             btn.addEventListener('touchstart', e => {
                 // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
-                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn') return;
+                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn' || btn.id === 'FuncBtn' || btn.id === 'HistBtn') return;
             
                 e.preventDefault(); 
             
