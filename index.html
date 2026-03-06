@@ -21,7 +21,7 @@
             width: 100%; flex: 1; background: #000; color: #00ff00;
             border: 1px solid #444; border-radius: 8px; padding: 10px;
             font-size: 1.1rem; resize: none; outline: none;
-            touch-action: none; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
+            touch-action: pan-y; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
         }
         #result-area {
             width: 100%; background: #1e1e1e; padding: 8px; border-radius: 8px;
@@ -443,8 +443,8 @@
         document.querySelectorAll('#controls button').forEach(btn => {
             btn.addEventListener('touchstart', e => {
                 // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
-                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn' || btn.id === 'FuncBtn' || btn.id === 'HistBtn') return;
-
+                const specialButtons = ['clearBtn', 'backspaceBtn', 'FuncBtn', 'HistBtn', 'MathBtn'];
+                if (specialButtons.includes(btn.id)) return;
                 e.preventDefault(); 
 
                 if (typeof btn.onclick === 'function') {
@@ -457,33 +457,93 @@
             }, {passive: false});
         });
 
-        display.onclick = (e) => {
-            const text = display.value;
-            const pos = display.selectionStart;
+        // display.onclick = (e) => {
+        //     const text = display.value;
+        //     const pos = display.selectionStart;
             
-            // Wort unter dem Cursor extrahieren
-            const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
-                        (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
+        //     const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
+        //                 (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
 
-            if (word && varStorage[word] !== undefined) {
-                const val = varStorage[word];
-                const isInt = Number.isInteger(val);
+        //     if (word && varStorage[word] !== undefined) {
+        //         const val = varStorage[word];
+        //         const isInt = Number.isInteger(val);
 
-                // Inhalt setzen: Name = Wert (und Hex, falls Integer)
-                popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
+        //         popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
                 
-                popup.style.display = 'block';
+        //         popup.style.display = 'block';
 
-                // Position direkt beim Klick (mit kleinem Versatz nach oben)
-                popup.style.left = (e.clientX + 10) + 'px';
-                popup.style.top = (e.clientY - 40) + 'px';
+        //         // Horizontale Position (mit Schutz gegen den Bildschirmrand)
+        //         let left = e.clientX - 50;
+        //         left = Math.max(10, Math.min(left, window.innerWidth - 130));
 
-                // Nach 2 Sekunden ausblenden
-                setTimeout(() => popup.style.display = 'none', 2000);
-            }
+        //         // Vertikale Position: Wenn oben weniger als 80px Platz ist, zeige es unten an
+        //         let top = e.clientY - 70; 
+        //         if (e.clientY < 80) { 
+        //             top = e.clientY + 20; // Popup unterhalb des Klicks
+        //         }
+
+        //         popup.style.left = left + 'px';
+        //         popup.style.top = top + 'px';
+        //         setTimeout(() => popup.style.display = 'none', 2000);
+        //     }
+        // };
+        let popupTimer;
+
+        const showPopup = (e) => {
+            // Ein winziger Timeout sorgt dafür, dass display.selectionStart 
+            // bereits auf der neuen Position des Klicks/Touchs steht.
+            setTimeout(() => {
+                const text = display.value;
+                const pos = display.selectionStart;
+                
+                const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
+                            (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
+
+                if (word && varStorage[word] !== undefined) {
+                    const val = varStorage[word];
+                    const isInt = Number.isInteger(val);
+
+                    popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
+                    popup.style.display = 'block';
+
+                    // Positionierung bleibt gleich
+                    let left = Math.max(10, Math.min(e.clientX - 50, window.innerWidth - 130));
+                    let top = e.clientY < 80 ? e.clientY + 25 : e.clientY - 70;
+
+                    popup.style.left = left + 'px';
+                    popup.style.top = top + 'px';
+
+                    clearTimeout(popupTimer);
+                    // Wir setzen einen Basis-Timeout, falls man nur kurz klickt
+                    popupTimer = setTimeout(() => popup.style.display = 'none', 3000);
+                } else {
+                    // Falls man ins Leere klickt, altes Popup sofort verstecken
+                    popup.style.display = 'none';
+                }
+            }, 0); 
         };
 
+        // Events für "Gedrückt halten"
+        display.addEventListener('mousedown', (e) => {
+            showPopup(e);
+            clearTimeout(popupTimer); // Verhindert Auto-Hide während des Drückens
+        });
+
+        display.addEventListener('mouseup', () => {
+            // Wenn losgelassen wird, verschwindet es nach 1 Sekunde
+            popupTimer = setTimeout(() => popup.style.display = 'none', 1000);
+        });
+
+        // Touch-Support für Mobile
+        display.addEventListener('touchstart', (e) => {
+            if(e.touches.length > 0) showPopup(e.touches[0]);
+            clearTimeout(popupTimer);
+        }, {passive: true});
+
+        display.addEventListener('touchend', () => {
+            popupTimer = setTimeout(() => popup.style.display = 'none', 1000);
+        });
+
     </script>
-    <div id="var-popup"></div>
 </body>
 </html>
