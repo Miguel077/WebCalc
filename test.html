@@ -87,6 +87,9 @@
     <div id="top-section">
         <textarea id="display" placeholder="Wisch rauf für Tastatur..." inputmode="none" spellcheck="false"></textarea>
         <div id="result-area">Bereit...</div>
+        <div id="debug-storage" style="margin-top: 5px; font-size: 0.75rem; color: #888; font-family: monospace; background: #151515; padding: 5px; border-radius: 5px; display: none;">
+    <b>Speicher:</b> <span id="storage-list">leer</span>
+</div>
     </div>
 
     <div id="controls">
@@ -306,6 +309,7 @@
                         (Number.isInteger(finalResult) ? " <br><small>Hex: 0x" + finalResult.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
+                updateDebugView();
             } catch(e) { 
                 resArea.innerText = "Fehler: " + e.message; 
             }
@@ -500,7 +504,20 @@
             setTimeout(() => showVarPopup(e.changedTouches[0]), 50);
         });
 
-
+function updateDebugView() {
+    const debugDiv = document.getElementById('debug-storage');
+    const listSpan = document.getElementById('storage-list');
+    
+    const keys = Object.keys(varStorage).filter(k => varStorage[k] !== undefined);
+    
+    if (keys.length > 0) {
+        debugDiv.style.display = 'block';
+        listSpan.innerHTML = keys.map(k => `${k}=${varStorage[k]}`).join(', ');
+    } else {
+        debugDiv.style.display = 'none';
+        listSpan.innerHTML = 'leer';
+    }
+}
     </script>
     <div id="var-popup"></div>
 </body>
