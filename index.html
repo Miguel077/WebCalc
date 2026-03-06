@@ -33,6 +33,8 @@
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
         .func-btn { background: #5d4037; font-weight: bold; }
+        .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
+
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
@@ -72,27 +74,28 @@
             <button class="op" onclick="add('*')">*</button>
             <button class="op" onclick="add('/')">/</button>
             <button class="op" onclick="add('=')">=</button>
-            <button class="func-btn" onclick="openFunc()">Func</button>
+            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
 
             <button onclick="add('(')">(</button>
             <button onclick="add(')')">)</button>
             <button onclick="add('^')">^</button>
             <button onclick="add('pi')">pi</button>
-            <button onclick="add('sqrt(')">sqrt</button> <button class="op" style="background:#444" onclick="openMath()">Math</button>
+            <button class="op" style="background:#444" onclick="openMath()">Math</button>
+            <button class="func-btn" id="FuncBtn" onclick="openFunc()">Func</button>
 
             <button class="hex" onclick="add('A')">A</button>
             <button class="hex" onclick="add('B')">B</button>
             <button class="num" onclick="add('7')">7</button>
             <button class="num" onclick="add('8')">8</button>
             <button class="num" onclick="add('9')">9</button>
-            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+            <button class="del-clear" id="clearBtn">AC</button>
 
             <button class="hex" onclick="add('C')">C</button>
             <button class="hex" onclick="add('D')">D</button>
             <button class="num" onclick="add('4')">4</button>
             <button class="num" onclick="add('5')">5</button>
             <button class="num" onclick="add('6')">6</button>
-            <button class="del" id="backspaceBtn">⌫</button>
+            <button class="del" id="backspaceBtn" onclick="backspace()">⌫</button>
 
             <button class="hex" onclick="add('E')">E</button>
             <button class="hex" onclick="add('F')">F</button>
@@ -143,12 +146,13 @@
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
-        const delBtn = document.getElementById('backspaceBtn');
+        const acBtn = document.getElementById('clearBtn');
         const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
 
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
+        const clearBtn = document.getElementById('clearBtn');
 
 
         // Optimierte Gestensteuerung (global, auch mit fokussiertem Fenster)
@@ -195,29 +199,30 @@
             display.focus();
         }
 
-        delBtn.onmousedown = delBtn.ontouchstart = (e) => {
+        acBtn.onmousedown = acBtn.ontouchstart = (e) => {
             e.preventDefault();
-            const contentBefore = display.value;
-            if (display.value === "" && lastContent !== "") {
-                display.value = lastContent;
-                lastContent = "";
-                return;
+            
+            if (display.value !== "") {
+                lastContent = display.value;
+                display.value = "";
+                resArea.innerText = "Display & Speicher geleert";
             }
-            backspace();
+          
             bsTimer = setTimeout(() => {
-                if (contentBefore !== "") {
-                    lastContent = contentBefore;
-                    display.value = "";
+                if (display.value === "" && lastContent !== "") {
+                    display.value = lastContent;
+                    resArea.innerText = "Undo: Display zurück";
                 }
             }, 600);
         };
-        delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
+
+        acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsTimer);
 
         function calculate() {
             display.inputMode = "none"; display.blur();
             try {
-                let input = display.value;
-                if(!input.trim()) return;
+                let input = display.value.trim();
+                if(!input) return;
                 let rawInput = input;
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
@@ -313,7 +318,7 @@
                             const currentF = JSON.parse(localStorage.getItem('mySpecs') || '{}');
                             delete currentF[n];
                             localStorage.setItem('mySpecs', JSON.stringify(currentF));
-                            openFunc();
+                            // openFunc();
                         }
                     }, 600);
                 };
@@ -369,7 +374,8 @@
 
         document.querySelectorAll('#controls button').forEach(btn => {
             btn.addEventListener('touchstart', e => {
-                if (btn.id === 'backspaceBtn') return;
+                // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
+                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn' || btn.id === 'FuncBtn') return;
 
                 e.preventDefault(); 
 
