@@ -33,6 +33,7 @@
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
         .func-btn { background: #5d4037; font-weight: bold; }
+        .del-back { background: #e53935 !important; }
         .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
 
         .del { background: var(--accent-red); }
@@ -74,7 +75,7 @@
             <button class="op" onclick="add('*')">*</button>
             <button class="op" onclick="add('/')">/</button>
             <button class="op" onclick="add('=')">=</button>
-            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+            <button class="op" style="background:var(--accent-gray)" id="HistBtn" onclick="openHistory()">Hist</button>
 
             <button onclick="add('(')">(</button>
             <button onclick="add(')')">)</button>
@@ -375,7 +376,7 @@
         document.querySelectorAll('#controls button').forEach(btn => {
             btn.addEventListener('touchstart', e => {
                 // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
-                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn' || btn.id === 'FuncBtn') return;
+                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn' || btn.id === 'FuncBtn' || btn.id === 'HistBtn') return;
 
                 e.preventDefault(); 
 

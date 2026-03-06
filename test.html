@@ -33,6 +33,9 @@
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
         .func-btn { background: #5d4037; font-weight: bold; }
+        .del-back { background: #e53935 !important; }
+        .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
+
         .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
@@ -77,9 +80,6 @@
             transform: translateX(-50%); border-width: 6px; border-style: solid;
             border-color: #2c3e50 transparent transparent transparent;
         }
-        /* Neue Farben für die Lösch-Tasten */
-        .del-back { background: #e53935 !important; }
-        .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
     </style>
 </head>
 <body>
@@ -99,14 +99,14 @@
             <button class="op" onclick="add('*')">*</button>
             <button class="op" onclick="add('/')">/</button>
             <button class="op" onclick="add('=')">=</button>
-            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+            <button class="op" style="background:var(--accent-gray)" id="HistBtn" onclick="openHistory()">Hist</button>
 
             <button onclick="add('(')">(</button>
             <button onclick="add(')')">)</button>
             <button onclick="add('^')">^</button>
             <button onclick="add('pi')">pi</button>
             <button class="op" style="background:#444" onclick="openMath()">Math</button>
-            <button class="func-btn" onclick="openFunc()">Func</button>
+            <button class="func-btn" id="FuncBtn" onclick="openFunc()">Func</button>
 
             <button class="hex" onclick="add('A')">A</button>
             <button class="hex" onclick="add('B')">B</button>
@@ -179,9 +179,15 @@
         let bsTimer;
         let popupTimer;
         let varStorage = {};
-        const popup = document.getElementById('var-popup');
         const clearBtn = document.getElementById('clearBtn');
-
+        // Erstelle das Popup-Element dynamisch, falls nicht im HTML vorhanden
+        const popup = document.createElement('div');
+        Object.assign(popup.style, {
+            position: 'fixed', display: 'none', background: '#333', color: '#00ff00',
+            padding: '10px', borderRadius: '8px', border: '1px solid #444',
+            zIndex: '10000', fontFamily: 'monospace', boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+        });
+        document.body.appendChild(popup);
 
         // Optimierte Gestensteuerung (global, auch mit fokussiertem Fenster)
         let touchStartY = 0;
@@ -308,7 +314,6 @@
                         (Number.isInteger(finalResult) ? " <br><small>Hex: 0x" + finalResult.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
-                updateDebugView();
             } catch(e) { 
                 resArea.innerText = "Fehler: " + e.message; 
             }
@@ -455,68 +460,32 @@
             }, {passive: false});
         });
 
-        const showVarPopup = (e) => {
+        display.onclick = (e) => {
             const text = display.value;
             const pos = display.selectionStart;
-
-            // Findet das Wort (Variable) an der Cursor-Position
-            const leftPart = text.slice(0, pos).match(/[a-zA-Z0-9_]+$/);
-            const rightPart = text.slice(pos).match(/^[a-zA-Z0-9_]+/);
             
-            if (leftPart || rightPart) {
-                const word = (leftPart ? leftPart[0] : "") + (rightPart ? rightPart[0] : "");
+            // Wort unter dem Cursor extrahieren
+            const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
+                        (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
+
+            if (word && varStorage[word] !== undefined) {
                 const val = varStorage[word];
+                const isInt = Number.isInteger(val);
 
-                if (val !== undefined && typeof val !== 'function') {
-                    let info = `<b>${word}</b> = ${val}`;
-                    if (Number.isInteger(val)) {
-                        info += ` <small>(0x${val.toString(16).toUpperCase()})</small>`;
-                    }
-                    
-                    popup.innerHTML = info;
-                    popup.style.display = 'block';
-                    popup.style.opacity = '1';
-                    
-                    // Positionierung leicht über dem Finger/Cursor
-                    const rect = popup.getBoundingClientRect();
-                    const clickX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
-                    const clickY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+                // Inhalt setzen: Name = Wert (und Hex, falls Integer)
+                popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
+                
+                popup.style.display = 'block';
 
-                    popup.style.left = `${Math.max(10, Math.min(window.innerWidth - rect.width - 10, clickX - rect.width / 2))}px`;
-                    popup.style.top = `${clickY - rect.height - 30}px`;
+                // Position direkt beim Klick (mit kleinem Versatz nach oben)
+                popup.style.left = (e.clientX + 10) + 'px';
+                popup.style.top = (e.clientY - 40) + 'px';
 
-                    if (popupTimer) clearTimeout(popupTimer);
-                    popupTimer = setTimeout(() => {
-                        popup.style.opacity = '0';
-                        setTimeout(() => popup.style.display = 'none', 200);
-                    }, 3000);
-                    return;
-                }
+                // Nach 2 Sekunden ausblenden
+                setTimeout(() => popup.style.display = 'none', 2000);
             }
-            popup.style.display = 'none';
         };
 
-        // Auf beide Events hören für maximale Zuverlässigkeit
-        display.addEventListener('mouseup', showVarPopup);
-        display.addEventListener('touchend', (e) => {
-            // Kurze Verzögerung, damit selectionStart korrekt gesetzt ist
-            setTimeout(() => showVarPopup(e.changedTouches[0]), 50);
-        });
-
-function updateDebugView() {
-    const debugDiv = document.getElementById('debug-storage');
-    const listSpan = document.getElementById('storage-list');
-    
-    const keys = Object.keys(varStorage).filter(k => varStorage[k] !== undefined);
-    
-    if (keys.length > 0) {
-        debugDiv.style.display = 'block';
-        listSpan.innerHTML = keys.map(k => `${k}=${varStorage[k]}`).join(', ');
-    } else {
-        debugDiv.style.display = 'none';
-        listSpan.innerHTML = 'leer';
-    }
-}
     </script>
     <div id="var-popup"></div>
 </body>
