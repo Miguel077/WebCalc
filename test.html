@@ -175,6 +175,7 @@
         let useDegrees = true;
         let bsTimer;
         let popupTimer;
+        let varStorage = {};
         const popup = document.getElementById('var-popup');
         const clearBtn = document.getElementById('clearBtn');
 
@@ -226,19 +227,19 @@
         acBtn.onmousedown = acBtn.ontouchstart = (e) => {
             e.preventDefault();
             
-            // 1. Wenn Text da ist: Sichern und Löschen
             if (display.value !== "") {
-                lastContent = display.value; // Global speichern!
+                lastContent = display.value;
                 display.value = "";
-                resArea.innerText = "Gelöscht";
+                resArea.innerText = "Display & Speicher geleert";
             }
 
-            // 2. Timer starten für den "Undo"-Check (Longpress)
+            // Radikaler Reset des Rechner-Speichers:
+            varStorage = {}; 
+
             bsTimer = setTimeout(() => {
-                // Wenn das Display immer noch leer ist, holen wir es zurück
                 if (display.value === "" && lastContent !== "") {
                     display.value = lastContent;
-                    resArea.innerText = "Wiederhergestellt";
+                    resArea.innerText = "Undo: Display zurück";
                 }
             }, 600);
         };
@@ -251,13 +252,13 @@
                 let input = display.value.trim();
                 if(!input) return;
                 let rawInput = input;
-                
-                // Formatierung (Hex und implizite Multiplikation)
+
+                // 1. Mathematische Ersetzungen (wie bisher)
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1')
-                             .replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
+                            .replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
-                let code = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')               
+                let processedCode = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
                     .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
@@ -266,31 +267,50 @@
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
                     .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
 
-                // Variablen-Logik: Zeilen trennen und Zuweisungen an window binden
-                let codeLines = code.split('\n').map(l => {
-                    l = l.trim();
-                    if (!l) return "";
-                    // Wenn ein "=" enthalten ist (aber kein Vergleich), hänge "window." davor
-                    if (l.includes('=') && !l.includes('==') && !l.includes('!=') && !l.includes('<=') && !l.includes('>=')) {
-                        return "window." + l;
+                // 2. Zeilenweise Verarbeitung für Variablen
+                let lines = processedCode.split('\n');
+                let finalResult;
+
+                lines.forEach(line => {
+                    line = line.trim();
+                    if (!line) return;
+
+                    // Bestehende Variablen für diese Zeile verfügbar machen
+                    let contextPrefix = "";
+                    for (let v in varStorage) {
+                        contextPrefix += `let ${v} = varStorage['${v}']; `;
                     }
-                    return l;
+
+                    if (line.includes('=') && !line.match(/==|!=|<=|>=/)) {
+                        // Es ist eine Zuweisung (z.B. a = 5)
+                        let parts = line.split('=');
+                        let varName = parts[0].trim();
+                        let expression = parts.slice(1).join('=');
+                        
+                        // Berechne den Wert der rechten Seite im aktuellen Kontext
+                        let val = eval(contextPrefix + expression);
+                        varStorage[varName] = val; // Speichern im globalen varStorage
+                        finalResult = val;
+                    } else {
+                        // Es ist eine normale Rechnung (z.B. a * 5)
+                        finalResult = eval(contextPrefix + line);
+                    }
                 });
 
-                // HIER WAR DER FEHLER: res muss das Ergebnis des eval sein
-                let res = eval(codeLines.join(';'));
-
-                if(res !== undefined) {
-                    let resStr = (typeof res === 'number') ? res.toPrecision(10) : res;
+                // 3. Ergebnis anzeigen
+                if(finalResult !== undefined) {
+                    let resStr = (typeof finalResult === 'number') ? 
+                        (Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10)) : finalResult;
+                    
                     resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + 
-                        (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
+                        (Number.isInteger(finalResult) ? " <br><small>Hex: 0x" + finalResult.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
             } catch(e) { 
                 resArea.innerText = "Fehler: " + e.message; 
             }
         }
-        // --- Modals & Content Handling ---
+
         function addToHistory(q, a) {
             let h = JSON.parse(localStorage.getItem('calcHist') || '[]');
             h.unshift({q, a, t: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})});
@@ -442,7 +462,7 @@
             
             if (leftPart || rightPart) {
                 const word = (leftPart ? leftPart[0] : "") + (rightPart ? rightPart[0] : "");
-                const val = window[word]; 
+                const val = varStorage[word];
 
                 if (val !== undefined && typeof val !== 'function') {
                     let info = `<b>${word}</b> = ${val}`;
