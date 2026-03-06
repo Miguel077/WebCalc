@@ -56,6 +56,30 @@
             text-align: left; background: transparent; border-left: none; border-right: none; border-top: none;
         }
         .list-item:active { background: #333; }
+        /* Das schwebende Variablen-Popup */
+        #var-popup {
+            position: fixed;
+            background: #2c3e50;
+            color: #00ff00;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            z-index: 9999;
+            display: none;
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            border: 1px solid var(--accent-blue);
+            transition: opacity 0.2s;
+        }
+        #var-popup::after {
+            content: ''; position: absolute; top: 100%; left: 50%;
+            transform: translateX(-50%); border-width: 6px; border-style: solid;
+            border-color: #2c3e50 transparent transparent transparent;
+        }
+        /* Neue Farben für die Lösch-Tasten */
+        .del-back { background: #e53935 !important; }
+        .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
     </style>
 </head>
 <body>
@@ -72,34 +96,36 @@
             <button class="op" onclick="add('*')">*</button>
             <button class="op" onclick="add('/')">/</button>
             <button class="op" onclick="add('=')">=</button>
-            <button class="func-btn" onclick="openFunc()">Func</button>
+            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
 
             <button onclick="add('(')">(</button>
             <button onclick="add(')')">)</button>
             <button onclick="add('^')">^</button>
             <button onclick="add('pi')">pi</button>
-            <button onclick="add('sqrt(')">sqrt</button> <button class="op" style="background:#444" onclick="openMath()">Math</button>
+            <button class="op" style="background:#444" onclick="openMath()">Math</button>
+            <button class="func-btn" onclick="openFunc()">Func</button>
 
             <button class="hex" onclick="add('A')">A</button>
             <button class="hex" onclick="add('B')">B</button>
             <button class="num" onclick="add('7')">7</button>
             <button class="num" onclick="add('8')">8</button>
             <button class="num" onclick="add('9')">9</button>
-            <button class="op" style="background:var(--accent-gray)" onclick="openHistory()">Hist</button>
+            <button class="del-clear" id="clearBtn">AC</button>
 
             <button class="hex" onclick="add('C')">C</button>
             <button class="hex" onclick="add('D')">D</button>
             <button class="num" onclick="add('4')">4</button>
             <button class="num" onclick="add('5')">5</button>
             <button class="num" onclick="add('6')">6</button>
-            <button class="del" id="backspaceBtn">⌫</button>
+            <button class="del" id="backspaceBtn" onclick="backspace()">⌫</button>
 
             <button class="hex" onclick="add('E')">E</button>
             <button class="hex" onclick="add('F')">F</button>
             <button class="num" onclick="add('1')">1</button>
             <button class="num" onclick="add('2')">2</button>
             <button class="num" onclick="add('3')">3</button>
-            <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↲</button>
+            <!-- <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↲</button> -->
+            <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')"><div style="transform: scale(1.8); font-weight: bold; line-height: 1;">↲</div></button>
 
             <button class="hex" onclick="add('x')">0x</button>
             <button onclick="add(' ')">␣</button>
@@ -142,12 +168,15 @@
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
-        const delBtn = document.getElementById('backspaceBtn');
+        const acBtn = document.getElementById('clearBtn');
         const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
 
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
+        let popupTimer;
+        const popup = document.getElementById('var-popup');
+        const clearBtn = document.getElementById('clearBtn');
 
 
         // Optimierte Gestensteuerung (global, auch mit fokussiertem Fenster)
@@ -169,7 +198,8 @@
                     display.focus();
                 } else { // Wisch nach unten
                     display.inputMode = "none";
-                    // display.blur();
+                    display.blur();
+                    display.focus();
                 }
             }
         }, {passive: false});
@@ -193,34 +223,37 @@
             display.focus();
         }
 
-        delBtn.onmousedown = delBtn.ontouchstart = (e) => {
+        acBtn.onmousedown = acBtn.ontouchstart = (e) => {
             e.preventDefault();
-            const contentBefore = display.value;
-            if (display.value === "" && lastContent !== "") {
-                display.value = lastContent;
-                lastContent = "";
-                return;
+            
+            // 1. Wenn Text da ist: Sichern und Löschen
+            if (display.value !== "") {
+                lastContent = display.value; // Global speichern!
+                display.value = "";
+                resArea.innerText = "Gelöscht";
             }
-            backspace();
+
+            // 2. Timer starten für den "Undo"-Check (Longpress)
             bsTimer = setTimeout(() => {
-                if (contentBefore !== "") {
-                    lastContent = contentBefore;
-                    display.value = "";
+                // Wenn das Display immer noch leer ist, holen wir es zurück
+                if (display.value === "" && lastContent !== "") {
+                    display.value = lastContent;
+                    resArea.innerText = "Wiederhergestellt";
                 }
             }, 600);
         };
-        delBtn.onmouseup = delBtn.onmouseleave = delBtn.ontouchend = () => clearTimeout(bsTimer);
 
+acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsTimer);
         function calculate() {
             display.inputMode = "none"; display.blur();
             try {
-                let input = display.value;
-                if(!input.trim()) return;
+                let input = display.value.trim();
+                if(!input) return;
                 let rawInput = input;
                 input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
-                let code = input.replace(/pi/g, 'Math.PI').replace(/e(?![a-zA-Z0-9\-\+])/g, 'Math.E')
+                let code = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')               
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
                     .replace(/\basin\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.asin($1))" : "Math.asin($1)"))
                     .replace(/\bacos\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.acos($1))" : "Math.acos($1)"))
@@ -229,8 +262,11 @@
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
                     .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
 
-                let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
-                    
+                // let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
+                let res = eval(code.split('\n').map(l => {l = l.trim();
+                // Zuweisung (ue=123) wird zu window.ue=123
+                if (l.includes('=') && !l.includes('==')) return "window." + l; return l;}).join(';'));
+
                 if(res !== undefined) {
                     let resStr = res.toPrecision(10);
                     //let resStr = res.toLocaleString('de-DE');
@@ -366,10 +402,61 @@
         function toggleDegRad() { useDegrees = !useDegrees; document.getElementById('modeDisplay').innerText = useDegrees ? "Mode: DEG" : "Mode: RAD"; }
 
         document.querySelectorAll('#controls button').forEach(btn => {
-            btn.addEventListener('mousedown', e => {
-                if(btn.id !== 'backspaceBtn') e.preventDefault();
-            });
+            btn.addEventListener('touchstart', e => {
+                // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
+                if (btn.id === 'clearBtn' || btn.id === 'backspaceBtn') return;
+            
+                e.preventDefault(); 
+            
+                if (typeof btn.onclick === 'function') {
+                    btn.onclick();
+                }
+            
+                if (document.activeElement !== display) {
+                    display.focus();
+                }
+            }, {passive: false});
+        });
+
+        display.addEventListener('click', (e) => {
+            const text = display.value;
+            const pos = display.selectionStart;
+
+            // Wort unter dem Cursor finden
+            const leftPart = text.slice(0, pos).match(/[a-zA-Z0-9_]+$/);
+            const rightPart = text.slice(pos).match(/^[a-zA-Z0-9_]+/);
+
+            if (leftPart || rightPart) {
+                const word = (leftPart ? leftPart[0] : "") + (rightPart ? rightPart[0] : "");
+                const val = window[word]; // Suche im globalen Speicher
+            
+                // Nur anzeigen, wenn es eine gespeicherte Variable/Zahl ist
+                if (val !== undefined && typeof val !== 'function') {
+                    let info = `<b>${word}</b> = ${val}`;
+                    if (Number.isInteger(val)) {
+                        info += ` <small>(0x${val.toString(16).toUpperCase()})</small>`;
+                    }
+
+                    popup.innerHTML = info;
+                    popup.style.display = 'block';
+                    popup.style.opacity = '1';
+
+                    // Über dem Klick positionieren
+                    const rect = popup.getBoundingClientRect();
+                    popup.style.left = `${Math.max(10, Math.min(window.innerWidth - rect.width - 10, e.clientX - rect.width / 2))}px`;
+                    popup.style.top = `${e.clientY - rect.height - 20}px`;
+                
+                    if (popupTimer) clearTimeout(popupTimer);
+                    popupTimer = setTimeout(() => {
+                        popup.style.opacity = '0';
+                        setTimeout(() => popup.style.display = 'none', 200);
+                    }, 2500);
+                    return;
+                }
+            }
+            popup.style.display = 'none';
         });
     </script>
+    <div id="var-popup"></div>
 </body>
 </html>
