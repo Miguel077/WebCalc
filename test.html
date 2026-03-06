@@ -243,14 +243,18 @@
             }, 600);
         };
 
-acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsTimer);
+        acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsTimer);
+
         function calculate() {
             display.inputMode = "none"; display.blur();
             try {
                 let input = display.value.trim();
                 if(!input) return;
                 let rawInput = input;
-                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
+                
+                // Formatierung (Hex und implizite Multiplikation)
+                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1')
+                             .replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
 
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
                 let code = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')               
@@ -262,20 +266,30 @@ acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsT
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
                     .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
 
-                // let res = eval(code.split('\n').map(l => (l.trim().includes('=') && !l.trim().includes('==')) ? "var " + l.trim() : l.trim()).join(';'));
-                let res = eval(code.split('\n').map(l => {l = l.trim();
-                // Zuweisung (ue=123) wird zu window.ue=123
-                if (l.includes('=') && !l.includes('==')) return "window." + l; return l;}).join(';'));
+                // Variablen-Logik: Zeilen trennen und Zuweisungen an window binden
+                let codeLines = code.split('\n').map(l => {
+                    l = l.trim();
+                    if (!l) return "";
+                    // Wenn ein "=" enthalten ist (aber kein Vergleich), hänge "window." davor
+                    if (l.includes('=') && !l.includes('==') && !l.includes('!=') && !l.includes('<=') && !l.includes('>=')) {
+                        return "window." + l;
+                    }
+                    return l;
+                });
+
+                // HIER WAR DER FEHLER: res muss das Ergebnis des eval sein
+                let res = eval(codeLines.join(';'));
 
                 if(res !== undefined) {
-                    let resStr = res.toPrecision(10);
-                    //let resStr = res.toLocaleString('de-DE');
-                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
+                    let resStr = (typeof res === 'number') ? res.toPrecision(10) : res;
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + 
+                        (Number.isInteger(res) ? " <br><small>Hex: 0x" + res.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
-            } catch(e) { resArea.innerText = "Fehler: " + e.message; }
+            } catch(e) { 
+                resArea.innerText = "Fehler: " + e.message; 
+            }
         }
-
         // --- Modals & Content Handling ---
         function addToHistory(q, a) {
             let h = JSON.parse(localStorage.getItem('calcHist') || '[]');
@@ -418,44 +432,55 @@ acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsT
             }, {passive: false});
         });
 
-        display.addEventListener('click', (e) => {
+        const showVarPopup = (e) => {
             const text = display.value;
             const pos = display.selectionStart;
 
-            // Wort unter dem Cursor finden
+            // Findet das Wort (Variable) an der Cursor-Position
             const leftPart = text.slice(0, pos).match(/[a-zA-Z0-9_]+$/);
             const rightPart = text.slice(pos).match(/^[a-zA-Z0-9_]+/);
-
+            
             if (leftPart || rightPart) {
                 const word = (leftPart ? leftPart[0] : "") + (rightPart ? rightPart[0] : "");
-                const val = window[word]; // Suche im globalen Speicher
-            
-                // Nur anzeigen, wenn es eine gespeicherte Variable/Zahl ist
+                const val = window[word]; 
+
                 if (val !== undefined && typeof val !== 'function') {
                     let info = `<b>${word}</b> = ${val}`;
                     if (Number.isInteger(val)) {
                         info += ` <small>(0x${val.toString(16).toUpperCase()})</small>`;
                     }
-
+                    
                     popup.innerHTML = info;
                     popup.style.display = 'block';
                     popup.style.opacity = '1';
-
-                    // Über dem Klick positionieren
+                    
+                    // Positionierung leicht über dem Finger/Cursor
                     const rect = popup.getBoundingClientRect();
-                    popup.style.left = `${Math.max(10, Math.min(window.innerWidth - rect.width - 10, e.clientX - rect.width / 2))}px`;
-                    popup.style.top = `${e.clientY - rect.height - 20}px`;
-                
+                    const clickX = e.clientX || (e.touches ? e.touches[0].clientX : 0);
+                    const clickY = e.clientY || (e.touches ? e.touches[0].clientY : 0);
+
+                    popup.style.left = `${Math.max(10, Math.min(window.innerWidth - rect.width - 10, clickX - rect.width / 2))}px`;
+                    popup.style.top = `${clickY - rect.height - 30}px`;
+
                     if (popupTimer) clearTimeout(popupTimer);
                     popupTimer = setTimeout(() => {
                         popup.style.opacity = '0';
                         setTimeout(() => popup.style.display = 'none', 200);
-                    }, 2500);
+                    }, 3000);
                     return;
                 }
             }
             popup.style.display = 'none';
+        };
+
+        // Auf beide Events hören für maximale Zuverlässigkeit
+        display.addEventListener('mouseup', showVarPopup);
+        display.addEventListener('touchend', (e) => {
+            // Kurze Verzögerung, damit selectionStart korrekt gesetzt ist
+            setTimeout(() => showVarPopup(e.changedTouches[0]), 50);
         });
+
+
     </script>
     <div id="var-popup"></div>
 </body>
