@@ -11,17 +11,33 @@
             --accent-gray: #455a64; --hex-btn: #2a2a2a;
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            background-color: var(--bg-color); color: var(--text-color);
-            font-family: 'Courier New', monospace; margin: 0; padding: 10px;
-            height: 100svh; width: 100vw; display: flex; flex-direction: column; overflow: hidden;
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            overflow: hidden;
+            background-color: var(--bg-color); /* Verhindert weiße Ränder */
         }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            /* Nutze die dynamische Viewport-Höhe */
+            height: 100dvh; 
+        }     
         #top-section { display: flex; flex-direction: column; flex: 1; min-height: 60px; gap: 5px; }
         #display {
             width: 100%; flex: 1; background: #000; color: #00ff00;
             border: 1px solid #444; border-radius: 8px; padding: 10px;
             font-size: 1.1rem; resize: none; outline: none;
-            touch-action: pan-y; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
+            /*touch-action: none; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
+            touch-action: pan-y;
+            overflow-y: auto;
+            /* Verhindert, dass das Scrollen auf den Body "überspringt" */
+            overscroll-behavior: contain; 
+            -webkit-overflow-scrolling: touch;
         }
         #result-area {
             width: 100%; background: #1e1e1e; padding: 8px; border-radius: 8px;
@@ -173,6 +189,27 @@
         const resArea = document.getElementById('result-area');
         const acBtn = document.getElementById('clearBtn');
         const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
+const fixViewport = () => {
+    if (window.visualViewport) {
+        const vv = window.visualViewport;
+        
+        // Wir setzen die Höhe des Bodys auf die exakte sichtbare Höhe
+        document.body.style.height = vv.height + 'px';
+        
+        // Wir zwingen den Browser, den Ursprung bei 0,0 zu lassen
+        // Das eliminiert die weißen Ränder rundherum
+        window.scrollTo(0, 0);
+    }
+};
+
+// Bei jedem Resize (Tastatur auf/zu) und Scroll-Versuch ausführen
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', fixViewport);
+    window.visualViewport.addEventListener('scroll', fixViewport);
+}
+
+// Initial beim Laden ausführen
+window.addEventListener('load', fixViewport);
 
         let lastContent = "";
         let useDegrees = true;
@@ -269,7 +306,7 @@
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
                     .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
-                    .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
+                    .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^').replace(/\bmod\b/g, '%').replace(/\bshl\b/g, '<<').replace(/\bshr\b/g, '>>');
 
                 // Innerhalb von calculate() - nach der Vorverarbeitung des Codes:
                 let lines = processedCode.split('\n');
@@ -462,6 +499,7 @@
                 if (document.activeElement !== display) {
                     display.focus();
                 }
+                if (navigator.vibrate) navigator.vibrate(5);
             }, {passive: false});
         });
 
@@ -528,7 +566,7 @@
                 }
             }, 0); 
         };
-        
+
         // Events für "Gedrückt halten"
         display.addEventListener('mousedown', (e) => {
             showPopup(e);
@@ -556,6 +594,18 @@
                 showPopup(e.touches[0]);
             }
         }, {passive: false});
+
+        // Verhindert, dass der Browser das Layout verschiebt, wenn die Tastatur erscheint
+        window.addEventListener('scroll', (e) => {
+            if (window.scrollY !== 0) {
+                window.scrollTo(0, 0);
+            }
+        }, { passive: false });
+
+        // Optional: Falls du im Display scrollen willst, erlaube es nur dort lokal
+        display.addEventListener('touchmove', (e) => {
+            e.stopPropagation(); 
+        }, { passive: true });
     </script>
 </body>
 </html>

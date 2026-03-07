@@ -21,7 +21,7 @@
             width: 100%; flex: 1; background: #000; color: #00ff00;
             border: 1px solid #444; border-radius: 8px; padding: 10px;
             font-size: 1.1rem; resize: none; outline: none;
-            touch-action: pan-y; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
+            touch-action: none; /* Verhindert natives Scrollen, damit Swipes sofort erkannt werden */
         }
         #result-area {
             width: 100%; background: #1e1e1e; padding: 8px; border-radius: 8px;
@@ -172,7 +172,7 @@
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
         const acBtn = document.getElementById('clearBtn');
-        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor '];
+        const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor ', ' mod ', ' shl ', ' shr '];
 
         let lastContent = "";
         let useDegrees = true;
@@ -269,35 +269,43 @@
                     .replace(/\batan\((.*?)\)/g, (useDegrees ? "(180/Math.PI*Math.atan($1))" : "Math.atan($1)"))
                     .replace(/\b(abs|ceil|floor|round|exp|sqrt|random)\(/g, 'Math.$1(')
                     .replace(/\blog\(/g, 'logBase(').replace(/\bln\(/g, 'Math.log(').replace(/\^/g, '**')
-                    .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^');
+                    .replace(/\band\b/g, '&').replace(/\bor\b/g, '|').replace(/\bxor\b/g, '^').replace(/\bmod\b/g, '%').replace(/\bshl\b/g, '<<').replace(/\bshr\b/g, '>>');
 
-                // 2. Zeilenweise Verarbeitung für Variablen
+                // Innerhalb von calculate() - nach der Vorverarbeitung des Codes:
                 let lines = processedCode.split('\n');
                 let finalResult;
 
-                lines.forEach(line => {
+                lines.forEach((line, index) => {
                     line = line.trim();
                     if (!line) return;
 
-                    // Bestehende Variablen für diese Zeile verfügbar machen
+                    try {
+                        // 1. Kontext aufbauen (vorhandene Variablen definieren)
                     let contextPrefix = "";
                     for (let v in varStorage) {
+                            // Verhindert Konflikte mit reservierten Wörtern oder ungültigen Namen
                         contextPrefix += `let ${v} = varStorage['${v}']; `;
                     }
 
                     if (line.includes('=') && !line.match(/==|!=|<=|>=/)) {
-                        // Es ist eine Zuweisung (z.B. a = 5)
+                            // Zuweisung verarbeiten
                         let parts = line.split('=');
                         let varName = parts[0].trim();
                         let expression = parts.slice(1).join('=');
                         
-                        // Berechne den Wert der rechten Seite im aktuellen Kontext
+                            // Eval im geschützten Kontext
                         let val = eval(contextPrefix + expression);
-                        varStorage[varName] = val; // Speichern im globalen varStorage
+                            varStorage[varName] = val; 
                         finalResult = val;
                     } else {
-                        // Es ist eine normale Rechnung (z.B. a * 5)
+                            // Normale Rechnung verarbeiten
                         finalResult = eval(contextPrefix + line);
+                    }
+                    } catch (lineError) {
+                        // Fehler für die spezifische Zeile loggen, aber weitermachen
+                        console.warn(`Fehler in Zeile ${index + 1}:`, lineError.message);
+                        // Optional: finalResult auf eine Fehlermeldung setzen, wenn es die letzte Zeile war
+                        finalResult = `Err (L${index + 1}): ${lineError.message}`;
                     }
                 });
 
@@ -457,36 +465,6 @@
             }, {passive: false});
         });
 
-        // display.onclick = (e) => {
-        //     const text = display.value;
-        //     const pos = display.selectionStart;
-            
-        //     const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
-        //                 (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
-
-        //     if (word && varStorage[word] !== undefined) {
-        //         const val = varStorage[word];
-        //         const isInt = Number.isInteger(val);
-
-        //         popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
-                
-        //         popup.style.display = 'block';
-
-        //         // Horizontale Position (mit Schutz gegen den Bildschirmrand)
-        //         let left = e.clientX - 50;
-        //         left = Math.max(10, Math.min(left, window.innerWidth - 130));
-
-        //         // Vertikale Position: Wenn oben weniger als 80px Platz ist, zeige es unten an
-        //         let top = e.clientY - 70; 
-        //         if (e.clientY < 80) { 
-        //             top = e.clientY + 20; // Popup unterhalb des Klicks
-        //         }
-
-        //         popup.style.left = left + 'px';
-        //         popup.style.top = top + 'px';
-        //         setTimeout(() => popup.style.display = 'none', 2000);
-        //     }
-        // };
         let popupTimer;
 
         const showPopup = (e) => {
