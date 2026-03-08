@@ -1,19 +1,21 @@
-const CACHE_NAME = 'webcalc-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './calculator.png',
-  './manifest.json'
-];
+const CACHE_NAME = 'webcalc-v2';
 
-// Installieren und Dateien in den Cache laden
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then((cache) => {
+      // Wir versuchen die Dateien einzeln zu adden, 
+      // damit ein Fehler bei einer Datei nicht alles stoppt.
+      return Promise.allSettled([
+        cache.add('./'),
+        cache.add('./index.html'),
+        cache.add('./calculator.png'),
+        cache.add('./manifest.json')
+      ]);
+    })
   );
+  self.skipWaiting();
 });
 
-// Fetch-Event (Zwingend für Firefox "Installieren"-Button)
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
