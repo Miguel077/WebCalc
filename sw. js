@@ -1,8 +1,9 @@
 const CACHE_NAME = 'webcalc-v1';
 const ASSETS = [
-  'index.html',
-  'calculator.png',
-  'manifest.json'
+  './',
+  './index.html',
+  './calculator.png',
+  './manifest.json'
 ];
 
 // Installieren und Dateien in den Cache laden
