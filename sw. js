@@ -1,9 +1,22 @@
+const CACHE_NAME = 'webcalc-v1';
+const ASSETS = [
+  'index.html',
+  'calculator.png',
+  'manifest.json'
+];
+
+// Installieren und Dateien in den Cache laden
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
 });
 
+// Fetch-Event (Zwingend für Firefox "Installieren"-Button)
 self.addEventListener('fetch', (event) => {
-  // Hier könnte man Caching einbauen, 
-  // aber für die Installation reicht die Anwesenheit dieses Events.
-  event.respondWith(fetch(event.request));
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      return response || fetch(event.request);
+    })
+  );
 });
