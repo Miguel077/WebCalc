@@ -2,8 +2,23 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="icon" type="image/png" href="calculator.png">
+    <link rel="apple-touch-icon" href="calculator.png">
+    <link rel="manifest" href="manifest.json">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>WebCalc Pro</title>
+    <meta name="theme-color" content="#2c5d87">
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(reg => console.log('Service Worker registriert'))
+                .catch(err => console.log('SW Fehler', err));
+            });
+        }
+    </script>
     <style>
         :root {
             --bg-color: #121212; --text-color: #e0e0e0; --btn-bg: #333;
