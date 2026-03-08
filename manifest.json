@@ -1,7 +1,7 @@
 {
   "name": "WebCalc",
   "short_name": "WebCalc",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#121212",
