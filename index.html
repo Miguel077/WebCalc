@@ -274,8 +274,6 @@
                 let input = display.value.trim();
                 if(!input) return;
                 let rawInput = input;
-                input = input.replace(/\bx([0-9a-fA-F]+)\b/g, '0x$1').replace(/(\d)(?=[a-df-wyzA-DF-WYZ\(])/g, '$1*');
-
                 let trigIn = useDegrees ? "(Math.PI/180*" : "(";
                 let processedCode = input.replace(/\bpi\b/g, 'Math.PI').replace(/\be\b/g, 'Math.E')
                     .replace(/\bsin\(/g, 'Math.sin' + trigIn).replace(/\bcos\(/g, 'Math.cos' + trigIn).replace(/\btan\(/g, 'Math.tan' + trigIn)
