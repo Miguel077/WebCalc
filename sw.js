@@ -1,4 +1,4 @@
-const CACHE_NAME = 'webcalc-v4';
+const CACHE_NAME = 'webcalc-v5';
 const ASSETS = [
   './',
   './index.html',
