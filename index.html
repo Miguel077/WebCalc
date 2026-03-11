@@ -181,8 +181,8 @@
         <div class="modal-content" id="funcContent"></div>
     </div>
 
-    <input type="file" id="fileInput" style="display:none" onchange="importFromFile(event)">
-
+    <input type="file" id="fileInput" style="display:none" accept=".json,application/json" onchange="importFromFile(event)">
+    
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
