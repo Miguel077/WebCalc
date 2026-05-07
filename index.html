@@ -182,7 +182,7 @@
     </div>
 
     <input type="file" id="fileInput" style="display:none" accept=".json,application/json" onchange="importFromFile(event)">
-    
+
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
@@ -216,14 +216,11 @@
             if (Math.abs(diff) > 30) { // Schwelle auf 30px gesenkt für schnellere Reaktion
                 e.preventDefault();
                 if (diff > 0) { // Wisch nach oben
-                    display.inputMode = "none";
-                    display.blur();
-                    display.inputMode = "text";
+                    display.inputMode = 'text';
                     display.focus();
                 } else { // Wisch nach unten
-                    display.inputMode = "none";
                     display.blur();
-                    display.focus();
+                    display.inputMode = 'none';
                 }
             }
         }, {passive: false});
@@ -249,15 +246,15 @@
 
         acBtn.onmousedown = acBtn.ontouchstart = (e) => {
             e.preventDefault();
-            
+
             if (display.value !== "") {
                 lastContent = display.value;
                 display.value = "";
                 resArea.innerText = "Display & Speicher geleert";
             }
 
-            varStorage = {}; 
-          
+            varStorage = {};
+
             bsTimer = setTimeout(() => {
                 if (display.value === "" && lastContent !== "") {
                     display.value = lastContent;
@@ -305,10 +302,10 @@
                         let parts = line.split('=');
                         let varName = parts[0].trim();
                         let expression = parts.slice(1).join('=');
-                        
+
                             // Eval im geschützten Kontext
                         let val = eval(contextPrefix + expression);
-                            varStorage[varName] = val; 
+                            varStorage[varName] = val;
                         finalResult = val;
                     } else {
                             // Normale Rechnung verarbeiten
@@ -324,15 +321,15 @@
 
                 // 3. Ergebnis anzeigen
                 if(finalResult !== undefined) {
-                    let resStr = (typeof finalResult === 'number') ? 
+                    let resStr = (typeof finalResult === 'number') ?
                         (Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10)) : finalResult;
-                    
-                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr + 
+
+                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr +
                         (Number.isInteger(finalResult) ? " <br><small>Hex: 0x" + finalResult.toString(16).toUpperCase() + "</small>" : "");
                     addToHistory(rawInput, resStr);
                 }
-            } catch(e) { 
-                resArea.innerText = "Fehler: " + e.message; 
+            } catch(e) {
+                resArea.innerText = "Fehler: " + e.message;
             }
         }
 
@@ -366,13 +363,13 @@
                     }, 600);
                 };
                 const cancel = () => clearTimeout(pressTimer);
-            
+
                 div.onmousedown = div.ontouchstart = start;
                 div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
 
-                div.onclick = () => { 
-                    display.value = i.q; 
-                    closeAllModals(); 
+                div.onclick = () => {
+                    display.value = i.q;
+                    closeAllModals();
                 };
                 cont.appendChild(div);
             });
@@ -399,7 +396,7 @@
                 const div = document.createElement('div');
                 div.className = 'list-item';
                 div.innerText = n;
-                        
+
                 let pressTimer;
                 const start = (e) => {
                     pressTimer = setTimeout(() => {
@@ -412,13 +409,13 @@
                     }, 600);
                 };
                 const cancel = () => clearTimeout(pressTimer);
-            
+
                 div.onmousedown = div.ontouchstart = start;
                 div.onmouseup = div.onmouseleave = div.ontouchend = cancel;
-            
-                div.onclick = () => { 
-                    display.value = f[n]; 
-                    closeAllModals(); 
+
+                div.onclick = () => {
+                    display.value = f[n];
+                    closeAllModals();
                 };
                 cont.appendChild(div);
             });
@@ -466,7 +463,7 @@
                 // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
                 const specialButtons = ['clearBtn', 'backspaceBtn', 'FuncBtn', 'HistBtn', 'MathBtn'];
                 if (specialButtons.includes(btn.id)) return;
-                e.preventDefault(); 
+                e.preventDefault();
 
                 if (typeof btn.onclick === 'function') {
                     btn.onclick();
@@ -481,13 +478,13 @@
         let popupTimer;
 
         const showPopup = (e) => {
-            // Ein winziger Timeout sorgt dafür, dass display.selectionStart 
+            // Ein winziger Timeout sorgt dafür, dass display.selectionStart
             // bereits auf der neuen Position des Klicks/Touchs steht.
             setTimeout(() => {
                 const text = display.value;
                 const pos = display.selectionStart;
-                
-                const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") + 
+
+                const word = (text.slice(0, pos).match(/[a-zA-Z0-9_]+$/)?.[0] || "") +
                             (text.slice(pos).match(/^[a-zA-Z0-9_]+/)?.[0] || "");
 
                 if (word && varStorage[word] !== undefined) {
@@ -511,7 +508,7 @@
                     // Falls man ins Leere klickt, altes Popup sofort verstecken
                     popup.style.display = 'none';
                 }
-            }, 0); 
+            }, 0);
         };
 
         // Events für "Gedrückt halten"
