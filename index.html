@@ -49,7 +49,7 @@
         .op { color: #3498db; font-weight: bold; }
         .func-btn { background: #5d4037; font-weight: bold; }
         .del { background: #ff0400 !important; }
-        .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
+        .del-clear { background: #a00000 !important; color: #ffcdd2 !important; }
 
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
@@ -73,6 +73,12 @@
             text-align: left; background: transparent; border-left: none; border-right: none; border-top: none;
         }
         .list-item:active { background: #333; }
+        /* Ergebnis-Layout */
+        .result-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+        .result-values { display: flex; flex-direction: column; gap: 4px; }
+        .result-normal { font-size: 0.95rem; color: #00ff00; font-weight: bold; }
+        .result-scientific { font-size: 0.95rem; color: #66bb6a; font-family: monospace; }
+        .result-hex { font-size: 0.95rem; color: #bb86fc; text-align: left; }
         /* Das schwebende Variablen-Popup */
         #var-popup {
             position: fixed;
@@ -310,12 +316,19 @@
 
                 // 3. Ergebnis anzeigen
                 if(finalResult !== undefined) {
-                    let resStr = (typeof finalResult === 'number') ?
-                        (Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10)) : finalResult;
-
-                    resArea.innerHTML = "<b>Ergebnis:</b><br>" + resStr +
-                        (Number.isInteger(finalResult) ? " <br><small>Hex: 0x" + finalResult.toString(16).toUpperCase() + "</small>" : "");
-                    addToHistory(rawInput, resStr);
+                    if(typeof finalResult === 'number') {
+                        let normalStr = Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10);
+                        let scientificStr = finalResult.toExponential(6);
+                        let hexStr = Number.isInteger(finalResult) ? "0x" + finalResult.toString(16).toUpperCase() : "";
+                        let resultHTML = "<b>Ergebnis:</b><br><div class='result-container'><div class='result-values'><div class='result-normal'>" + normalStr + "</div><div class='result-scientific'>" + scientificStr + "</div></div>";
+                        if(hexStr) { resultHTML += "<div class='result-hex' style='padding-top: 8px;'><small>" + hexStr + "</small></div>"; }
+                        resultHTML += "</div>";
+                        resArea.innerHTML = resultHTML;
+                        addToHistory(rawInput, normalStr);
+                    } else {
+                        resArea.innerHTML = "<b>Ergebnis:</b><br>" + finalResult;
+                        addToHistory(rawInput, finalResult);
+                    }
                 }
             } catch(e) {
                 resArea.innerText = "Fehler: " + e.message;
