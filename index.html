@@ -74,11 +74,10 @@
         }
         .list-item:active { background: #333; }
         /* Ergebnis-Layout */
-        .result-container { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-        .result-values { display: flex; flex-direction: column; gap: 4px; }
-        .result-normal { font-size: 0.95rem; color: #00ff00; font-weight: bold; }
+        .result-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+        .result-normal { grid-column: 1 / -1; font-size: 0.95rem; color: #00ff00; font-weight: bold; }
         .result-scientific { font-size: 0.95rem; color: #66bb6a; font-family: monospace; }
-        .result-hex { font-size: 0.95rem; color: #bb86fc; text-align: left; }
+        .result-hex { font-size: 0.95rem; color: #bb86fc; }
         /* Das schwebende Variablen-Popup */
         #var-popup {
             position: fixed;
@@ -318,10 +317,10 @@
                 if(finalResult !== undefined) {
                     if(typeof finalResult === 'number') {
                         let normalStr = Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10);
-                        let scientificStr = finalResult.toExponential(6);
+                        let scientificStr = finalResult.toExponential(12);
                         let hexStr = Number.isInteger(finalResult) ? "0x" + finalResult.toString(16).toUpperCase() : "";
-                        let resultHTML = "<b>Ergebnis:</b><br><div class='result-container'><div class='result-values'><div class='result-normal'>" + normalStr + "</div><div class='result-scientific'>" + scientificStr + "</div></div>";
-                        if(hexStr) { resultHTML += "<div class='result-hex' style='padding-top: 8px;'><small>" + hexStr + "</small></div>"; }
+                        let resultHTML = "<b>Ergebnis:</b><br><div class='result-container'><div class='result-normal'>" + normalStr + "</div><div class='result-scientific'>" + scientificStr + "</div>";
+                        if(hexStr) { resultHTML += "<div class='result-hex'>" + hexStr + "</div>"; }
                         resultHTML += "</div>";
                         resArea.innerHTML = resultHTML;
                         addToHistory(rawInput, normalStr);
