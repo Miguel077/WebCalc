@@ -48,10 +48,9 @@
         button { padding: 12px 2px; font-size: 1rem; border: none; border-radius: 5px; background: var(--btn-bg); color: white; touch-action: manipulation; }
         .op { color: #3498db; font-weight: bold; }
         .func-btn { background: #5d4037; font-weight: bold; }
-        .del-back { background: #e53935 !important; }
+        .del { background: #ff0400 !important; }
         .del-clear { background: #7f0000 !important; color: #ffcdd2 !important; }
 
-        .del { background: var(--accent-red); }
         .equal { background: var(--accent-green); grid-column: span 2; font-weight: bold; }
         .hex { background: var(--hex-btn); color: #bb86fc; font-weight: bold; }
         .num { background: #444; font-weight: bold; }
@@ -102,9 +101,6 @@
     <div id="top-section">
         <textarea id="display" placeholder="Wisch rauf für Tastatur..." inputmode="none" spellcheck="false"></textarea>
         <div id="result-area">Bereit...</div>
-        <div id="debug-storage" style="margin-top: 5px; font-size: 0.75rem; color: #888; font-family: monospace; background: #151515; padding: 5px; border-radius: 5px; display: none;">
-    <b>Speicher:</b> <span id="storage-list">leer</span>
-</div>
     </div>
 
     <div id="controls">
@@ -114,13 +110,13 @@
             <button class="op" onclick="add('*')">*</button>
             <button class="op" onclick="add('/')">/</button>
             <button class="op" onclick="add('=')">=</button>
-            <button class="op" style="background:var(--accent-gray)" id="HistBtn" onclick="openHistory()">Hist</button>
+            <button class="del-clear" id="clearBtn">AC</button>
 
             <button onclick="add('(')">(</button>
             <button onclick="add(')')">)</button>
             <button onclick="add('^')">^</button>
             <button onclick="add('pi')">pi</button>
-            <button class="op" style="background:#444" onclick="openMath()">Math</button>
+            <button class="func-btn" onclick="openMath()">Math</button>
             <button class="func-btn" id="FuncBtn" onclick="openFunc()">Func</button>
 
             <button class="hex" onclick="add('A')">A</button>
@@ -128,7 +124,7 @@
             <button class="num" onclick="add('7')">7</button>
             <button class="num" onclick="add('8')">8</button>
             <button class="num" onclick="add('9')">9</button>
-            <button class="del-clear" id="clearBtn">AC</button>
+            <button class="func-btn" id="HistBtn" onclick="openHistory()">Hist</button>
 
             <button class="hex" onclick="add('C')">C</button>
             <button class="hex" onclick="add('D')">D</button>
@@ -142,7 +138,6 @@
             <button class="num" onclick="add('1')">1</button>
             <button class="num" onclick="add('2')">2</button>
             <button class="num" onclick="add('3')">3</button>
-            <!-- <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')">↲</button> -->
             <button class="op" style="background:#555; color:#00ff00;" onclick="add('\n')"><div style="transform: scale(1.8); font-weight: bold; line-height: 1;">↲</div></button>
 
             <button class="hex" onclick="add('x')">0x</button>
@@ -154,6 +149,8 @@
     </div>
 
     <div id="overlay" onclick="closeAllModals()"></div>
+
+    <div id="var-popup"></div>
 
     <div id="mathModal" class="modal" style="border-color: var(--accent-green);">
         <div style="margin-bottom: 15px;"><span style="color: var(--accent-green); font-weight:bold;">Math</span><span id="modeDisplay" class="mode-toggle" onclick="toggleDegRad()">Mode: DEG</span></div>
@@ -186,22 +183,14 @@
     <script>
         const display = document.getElementById('display');
         const resArea = document.getElementById('result-area');
-        const acBtn = document.getElementById('clearBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const popup = document.getElementById('var-popup');
         const mathFuncs = ['sin(', 'cos(', 'tan(', 'asin(', 'acos(', 'atan(', 'log(', 'ln(', 'sqrt(', 'abs(', 'exp(', 'random()', 'ceil(', 'floor(', 'round(', ' and ', ' or ', ' xor ', ' mod ', ' shl ', ' shr '];
 
         let lastContent = "";
         let useDegrees = true;
         let bsTimer;
         let varStorage = {};
-        const clearBtn = document.getElementById('clearBtn');
-        // Erstelle das Popup-Element dynamisch, falls nicht im HTML vorhanden
-        const popup = document.createElement('div');
-        Object.assign(popup.style, {
-            position: 'fixed', display: 'none', background: '#333', color: '#00ff00',
-            padding: '10px', borderRadius: '8px', border: '1px solid #444',
-            zIndex: '10000', fontFamily: 'monospace', boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
-        });
-        document.body.appendChild(popup);
 
         // Optimierte Gestensteuerung (global, auch mit fokussiertem Fenster)
         let touchStartY = 0;
@@ -244,7 +233,7 @@
             display.focus();
         }
 
-        acBtn.onmousedown = acBtn.ontouchstart = (e) => {
+        clearBtn.onmousedown = clearBtn.ontouchstart = (e) => {
             e.preventDefault();
 
             if (display.value !== "") {
@@ -263,7 +252,7 @@
             }, 600);
         };
 
-        acBtn.onmouseup = acBtn.onmouseleave = acBtn.ontouchend = () => clearTimeout(bsTimer);
+        clearBtn.onmouseup = clearBtn.onmouseleave = clearBtn.ontouchend = () => clearTimeout(bsTimer);
 
         function calculate() {
             display.inputMode = "none"; display.blur();
@@ -460,8 +449,8 @@
 
         document.querySelectorAll('#controls button').forEach(btn => {
             btn.addEventListener('touchstart', e => {
-                // Schließe beide Spezial-Buttons (AC und Backspace) von der Standard-Logik aus
-                const specialButtons = ['clearBtn', 'backspaceBtn', 'FuncBtn', 'HistBtn', 'MathBtn'];
+                // Schließe Spezial-Buttons von der Standard-Logik aus
+                const specialButtons = ['clearBtn', 'backspaceBtn', 'FuncBtn', 'HistBtn'];
                 if (specialButtons.includes(btn.id)) return;
                 e.preventDefault();
 
@@ -490,6 +479,7 @@
                 if (word && varStorage[word] !== undefined) {
                     const val = varStorage[word];
                     const isInt = Number.isInteger(val);
+                    const popup = document.getElementById('var-popup');
 
                     popup.innerHTML = `<b>${word}</b> = ${val}${isInt ? `<br><small style="color:#bb86fc">Hex: 0x${val.toString(16).toUpperCase()}</small>` : ""}`;
                     popup.style.display = 'block';
@@ -503,10 +493,10 @@
 
                     clearTimeout(popupTimer);
                     // Wir setzen einen Basis-Timeout, falls man nur kurz klickt
-                    popupTimer = setTimeout(() => popup.style.display = 'none', 3000);
+                    popupTimer = setTimeout(() => document.getElementById('var-popup').style.display = 'none', 3000);
                 } else {
                     // Falls man ins Leere klickt, altes Popup sofort verstecken
-                    popup.style.display = 'none';
+                    document.getElementById('var-popup').style.display = 'none';
                 }
             }, 0);
         };
@@ -519,7 +509,7 @@
 
         display.addEventListener('mouseup', () => {
             // Wenn losgelassen wird, verschwindet es nach 1 Sekunde
-            popupTimer = setTimeout(() => popup.style.display = 'none', 1000);
+            popupTimer = setTimeout(() => document.getElementById('var-popup').style.display = 'none', 1000);
         });
 
         // Touch-Support für Mobile
@@ -529,7 +519,7 @@
         }, {passive: true});
 
         display.addEventListener('touchend', () => {
-            popupTimer = setTimeout(() => popup.style.display = 'none', 1000);
+            popupTimer = setTimeout(() => document.getElementById('var-popup').style.display = 'none', 1000);
         });
 
     </script>
