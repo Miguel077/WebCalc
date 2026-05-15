@@ -317,9 +317,23 @@
                 // 3. Ergebnis anzeigen
                 if(finalResult !== undefined) {
                     if(typeof finalResult === 'number') {
-                        let normalStr = Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10);
+                        // Normale Anzeige: toString() nutzen (bestes Format)
+                        let normalStr = finalResult.toString();
                         let isAlreadyScientific = /e/i.test(normalStr);
-                        let scientificStr = !isAlreadyScientific ? finalResult.toExponential(16).replace(/(\.\d*?)0+(e|$)/i, '$1$2').replace(/\.(?=e)/i, 'e') : "";
+                        
+                        // Nur wissenschaftliche Notation bei E+3 oder E-3 und höher
+                        let scientificStr = "";
+                        if(!isAlreadyScientific) {
+                            let expNotation = finalResult.toExponential(16);
+                            let expMatch = expNotation.match(/e([+-]?\d+)/i);
+                            if(expMatch) {
+                                let exponent = parseInt(expMatch[1]);
+                                if(Math.abs(exponent) >= 3) {
+                                    scientificStr = expNotation.replace(/(\.\d*?)0+(e|$)/i, '$1$2').replace(/\.(?=e)/i, '');
+                                }
+                            }
+                        }
+                        
                         let hexStr = Number.isInteger(finalResult) ? "0x" + finalResult.toString(16).toUpperCase() : "";
                         let resultHTML = "<b>Ergebnis:</b><br><div class='result-container'><div class='result-normal'>" + normalStr + "</div>";
                         if(scientificStr) { resultHTML += "<div class='result-scientific'>" + scientificStr + "</div>"; }
