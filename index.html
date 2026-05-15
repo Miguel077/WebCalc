@@ -74,8 +74,8 @@
         }
         .list-item:active { background: #333; }
         /* Ergebnis-Layout */
-        .result-container { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
-        .result-normal { grid-column: 1 / -1; font-size: 0.95rem; color: #00ff00; font-weight: bold; }
+        .result-container { display: grid; grid-template-columns: 1fr; gap: 4px; width: 100%; }
+        .result-normal { font-size: 0.95rem; color: #00ff00; font-weight: bold; }
         .result-scientific { font-size: 0.95rem; color: #66bb6a; font-family: monospace; }
         .result-hex { font-size: 0.95rem; color: #bb86fc; }
         /* Das schwebende Variablen-Popup */
@@ -259,6 +259,8 @@
 
         clearBtn.onmouseup = clearBtn.onmouseleave = clearBtn.ontouchend = () => clearTimeout(bsTimer);
 
+        function logBase(val, base = 10) { return Math.log(val) / Math.log(base); }
+
         function calculate() {
             display.inputMode = "none"; display.blur();
             try {
@@ -285,26 +287,25 @@
 
                     try {
                         // 1. Kontext aufbauen (vorhandene Variablen definieren)
-                    let contextPrefix = "";
-                    for (let v in varStorage) {
-                            // Verhindert Konflikte mit reservierten Wörtern oder ungültigen Namen
-                        contextPrefix += `let ${v} = varStorage['${v}']; `;
-                    }
+                        let contextPrefix = "";
+                        for (let v in varStorage) {
+                            contextPrefix += `let ${v} = varStorage['${v}']; `;
+                        }
 
-                    if (line.includes('=') && !line.match(/==|!=|<=|>=/)) {
+                        if (line.includes('=') && !line.match(/==|!=|<=|>=/)) {
                             // Zuweisung verarbeiten
-                        let parts = line.split('=');
-                        let varName = parts[0].trim();
-                        let expression = parts.slice(1).join('=');
+                            let parts = line.split('=');
+                            let varName = parts[0].trim();
+                            let expression = parts.slice(1).join('=');
 
                             // Eval im geschützten Kontext
-                        let val = eval(contextPrefix + expression);
+                            let val = eval(contextPrefix + expression);
                             varStorage[varName] = val;
-                        finalResult = val;
-                    } else {
+                            finalResult = val;
+                        } else {
                             // Normale Rechnung verarbeiten
-                        finalResult = eval(contextPrefix + line);
-                    }
+                            finalResult = eval(contextPrefix + line);
+                        }
                     } catch (lineError) {
                         // Fehler für die spezifische Zeile loggen, aber weitermachen
                         console.warn(`Fehler in Zeile ${index + 1}:`, lineError.message);
@@ -317,9 +318,11 @@
                 if(finalResult !== undefined) {
                     if(typeof finalResult === 'number') {
                         let normalStr = Number.isInteger(finalResult) ? finalResult.toString() : finalResult.toPrecision(10);
-                        let scientificStr = finalResult.toExponential(12);
+                        let isAlreadyScientific = /e/i.test(normalStr);
+                        let scientificStr = !isAlreadyScientific ? finalResult.toExponential(16).replace(/(\.\d*?)0+(e|$)/i, '$1$2').replace(/\.(?=e)/i, 'e') : "";
                         let hexStr = Number.isInteger(finalResult) ? "0x" + finalResult.toString(16).toUpperCase() : "";
-                        let resultHTML = "<b>Ergebnis:</b><br><div class='result-container'><div class='result-normal'>" + normalStr + "</div><div class='result-scientific'>" + scientificStr + "</div>";
+                        let resultHTML = "<b>Ergebnis:</b><br><div class='result-container'><div class='result-normal'>" + normalStr + "</div>";
+                        if(scientificStr) { resultHTML += "<div class='result-scientific'>" + scientificStr + "</div>"; }
                         if(hexStr) { resultHTML += "<div class='result-hex'>" + hexStr + "</div>"; }
                         resultHTML += "</div>";
                         resArea.innerHTML = resultHTML;
